@@ -35,25 +35,28 @@ Expect this tutorial to take about 15 minutes to complete.
 
 ## Before you start
 
-Make sure you've completed the [Before you start a tutorial](../before-you-start-a-tutorial.md) topic on the development system you'll use for the tutorial.
+Make sure you've completed the [Before you start a tutorial](../before-you-start-a-tutorial.md)
+topic on the development system you'll use for the tutorial.
 
 ## Add a new task
 
-Adding a new task to the service requires that you use the `POST` method to store the details of the new [`task`](../api/task.md) resource in the service.
+Adding a new task to the service requires that you use the `POST` method to store the details of
+the new [`task`](../api/task.md) resource in the service.
 
 To add a new task:
 
-1. Make sure your local service is running, or start it by using this command, if it's not.
+1. Make sure your local service is running.
+    Start the local service if it's not.
 
     ```shell
     cd <your-github-workspace>/to-do-service/api
     json-server -w to-do-db-source.json
     ```
 
-1. Open the Postman app on your desktop.
-1. In the Postman app, create a new request with these values:
+2. Open the Postman app on your desktop.
+3. In the Postman app, create a new request with these values:
     * **METHOD**: POST
-    * **URL**: `{{base_url}}/tasks`
+    * **URL**: `{base_url}/tasks`
     * **Headers**:
         * `Content-Type: application/json`
     * **Request body**:
@@ -69,8 +72,9 @@ To add a new task:
         }
         ```
 
-1. In the Postman app, choose **Send** to make the request.
-1. Watch for the response body, which should look something like this. Note that the names should be the same as you used in your **Request body** and the response should include the new user's `id`.
+4. In the Postman app, choose **Send** to make the request.
+5. Watch for the response body, which should look something like this. Note that the names should be
+    the same as you used in your **Request body** and the response should include the new user's `id`.
 
     ```js
     {

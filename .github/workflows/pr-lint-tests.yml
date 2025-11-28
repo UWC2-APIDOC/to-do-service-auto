@@ -54,4 +54,4 @@ jobs:
       - name: Run Vale
         # uses: errata-ai/vale-action@v2
         run: |
-          vale --config=.vale.ini --minAlertLevel=error ${{ needs.get-changed-files.outputs.changed_files }}
+          vale --config=.vale.ini --minAlertLevel=suggestion ${{ needs.get-changed-files.outputs.changed_files }}

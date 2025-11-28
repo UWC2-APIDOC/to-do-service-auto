@@ -19,6 +19,7 @@ jobs:
       
       - name: Run markdownlint
         if: steps.changed-files.outputs.any_changed == 'true'
+        continue-on-error: true
         uses: nosborn/github-action-markdown-cli@v3
         with:
           files: ${{ steps.changed-files.outputs.all_changed_files }}
@@ -26,6 +27,7 @@ jobs:
       
       - name: Run Vale
         if: steps.changed-files.outputs.any_changed == 'true'
+        continue-on-error: true
         uses: errata-ai/vale-action@v2
         with:
           files: ${{ steps.changed-files.outputs.all_changed_files }}

@@ -55,3 +55,4 @@ jobs:
         uses: errata-ai/vale-action@v2
         with:
           files: ${{ needs.get-changed-files.outputs.changed_files }}
+          fail_on_error: true

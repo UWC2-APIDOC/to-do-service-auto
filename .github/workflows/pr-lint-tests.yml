@@ -52,6 +52,12 @@ jobs:
           vale ls-config
 
       - name: Run Vale
-        # uses: errata-ai/vale-action@v2
-        run: |
-          vale --config=.vale.ini --minAlertLevel=suggestion ${{ needs.get-changed-files.outputs.changed_files }}
+        uses: errata-ai/vale-action@v2.1.1
+        with:
+          version: '3.12.0'
+          files: ${{ needs.get-changed-files.outputs.changed_files }}
+          separator: ' '
+          # assumes that config: .vale.ini
+          fail_on_error: true
+        # run: |
+        #   vale --config=.vale.ini --minAlertLevel=suggestion ${{ needs.get-changed-files.outputs.changed_files }}

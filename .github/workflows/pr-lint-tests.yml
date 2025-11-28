@@ -5,8 +5,11 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  lint-pr-files:
+  get-changed-files:
     runs-on: ubuntu-latest
+    outputs:
+      changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+      any_changed: ${{ steps.changed-files.outputs.any_changed }}
     steps:
       - uses: actions/checkout@v3
       
@@ -16,15 +19,27 @@ jobs:
         with:
           files: |
             **/*.md
+
+  markdownlint:
+    needs: get-changed-files
+    if: needs.get-changed-files.outputs.any_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
       
       - name: Run markdownlint
-        if: steps.changed-files.outputs.any_changed == 'true'
-        continue-on-error: true
         uses: nosborn/github-action-markdown-cli@v3
         with:
-          files: ${{ steps.changed-files.outputs.all_changed_files }}
+          files: ${{ needs.get-changed-files.outputs.changed_files }}
           config_file: .markdownlint.json
-
+  
+  vale:
+    needs: get-changed-files
+    if: needs.get-changed-files.outputs.any_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+     
       - name: Install Vale
         run: |
           wget https://github.com/errata-ai/vale/releases/download/v3.12.0/vale_3.12.0_Linux_64-bit.tar.gz
@@ -33,13 +48,10 @@ jobs:
           vale --version
 
       - name: Show Vale config
-        if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           vale ls-config
 
       - name: Run Vale
-        if: steps.changed-files.outputs.any_changed == 'true'
-        continue-on-error: true
         uses: errata-ai/vale-action@v2
         with:
-          files: ${{ steps.changed-files.outputs.all_changed_files }}
+          files: ${{ needs.get-changed-files.outputs.changed_files }}

@@ -1,0 +1,76 @@
+# .github/workflows/pr-lint-tests.yml
+name: Lint changed markdown files
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  get-changed-files:
+    name: Get changed markdown files
+    runs-on: ubuntu-latest
+    outputs:
+      any_changed_files: ${{ steps.get-changed-files-list.outputs.any_changed }}
+      changed_files_list: ${{ steps.get-changed-files-list.outputs.all_changed_files }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Get the list of changed markdown files
+        id: get-changed-files-list
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            **/*.md
+          separator: ','
+
+      - name: Log changed files
+        id: log-changed-files
+        if: steps.get-changed-files-list.outputs.any_changed == 'true'
+        run: |
+          echo "Changed files count: ${{ steps.get-changed-files-list.outputs.all_changed_files_count }}"
+          echo "Changed files:"
+          echo "${{ steps.get-changed-files-list.outputs.all_changed_files }}" | tr ',' '\n'
+
+  markdown-files-lint:
+    name: Lint changed markdown files
+    needs: get-changed-files
+    if: needs.get-changed-files.outputs.any_changed_files == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run MarkdownLint on
+        uses: DavidAnson/markdownlint-cli2-action@v21
+        with:
+          globs: ${{ needs.get-changed-files.outputs.changed_files_list }}
+          config: .markdownlint.json
+          separator: ','
+  
+  vale:
+    name: Check changed files with Vale
+    needs: get-changed-files
+    if: needs.get-changed-files.outputs.any_changed_files == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+     
+      - name: Install Vale
+        run: |
+          wget https://github.com/errata-ai/vale/releases/download/v3.12.0/vale_3.12.0_Linux_64-bit.tar.gz
+          tar -xvzf vale_3.12.0_Linux_64-bit.tar.gz
+          sudo mv vale /usr/local/bin/
+          vale --version
+
+      - name: Show Vale config  
+        run: |
+          vale ls-config
+
+      - name: Run Vale on
+        uses: errata-ai/vale-action@v2.1.1
+        with:
+          version: '3.12.0'
+          files: ${{ needs.get-changed-files.outputs.changed_files_list }}
+          separator: ','
+          # assumes that config file is .vale.ini
+          fail_on_error: true
+        # run: |
+        #   vale --config=.vale.ini --minAlertLevel=suggestion ${{ needs.get-changed-files.outputs.changed_files }}

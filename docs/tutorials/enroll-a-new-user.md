@@ -30,17 +30,20 @@ last_updated: "2025-09-03"
 In this tutorial, you learn the operations to call to
 enroll a new user into the service.
 
-Expect this tutorial to take about 15 minutes to complete.
+EXPECT this tutorial to take about 15 minutes to complete.
 
 ## Before you start
 
-Make sure you've completed the [Before you start a tutorial](../before-you-start-a-tutorial.md) topic on the development system you'll use for the tutorial.
+Make sure to complete the [Before you start a tutorial](../before-you-start-a-tutorial.md) topic
+on the development system you'll use for the tutorial.
 
 ## Enroll a new user
 
-Adding a new task to the service requires that you use the `POST` method to store the details of the new [`task`](../api/task.md) resource in the service.
+Adding a new task to the service requires that you use the `POST` method
+to store the details of the new [`task`](../api/task.md) resource in the service.
 
-Enrolling a new user in the service requires that you use the `POST` method to store the details of a new [`user`](../api/user.md) resource in the service.
+Enrolling a new user in the service requires that you use the `POST` method to store
+the details of a new [`user`](../api/user.md) resource in the service.
 
 To enroll a new user:
 
@@ -69,7 +72,9 @@ To enroll a new user:
         ```
 
 1. In the Postman app, choose **Send** to make the request.
-1. Watch for the response body, which should look something like this. Note that the names should be the same as you used in your **Request body** and the response should include the new user's `id`.
+1. Watch for the response body, which should look something like this.
+    Note that the names should be the same as you used in your **Request body** and
+    the response should include the new user's `id`.
 
     ```js
     {

@@ -2,3 +2,6 @@
 !.github/valeStyles/*
 .github/valeStyles/.DS_Store
 .vscode
+# Dependency directories
+node_modules/
+jspm_packages/

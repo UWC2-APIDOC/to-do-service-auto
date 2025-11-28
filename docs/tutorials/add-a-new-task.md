@@ -43,7 +43,7 @@ Adding a new task to the service requires that you use the `POST` method to stor
 
 To add a new task:
 
-1. Make sure your local service is running, or start it by using this command, if it's not.
+1. Make sure your local service will be running, (or start it by using this command), if it's not.
 
     ```shell
     cd <your-github-workspace>/to-do-service/api
@@ -53,7 +53,7 @@ To add a new task:
 1. Open the Postman app on your desktop.
 1. In the Postman app, create a new request with these values:
     * **METHOD**: POST
-    * **URL**: `{{base_url}}/tasks`
+    * **URL**: `{base_url}/tasks`
     * **Headers**:
         * `Content-Type: application/json`
     * **Request body**:
@@ -70,7 +70,7 @@ To add a new task:
         ```
 
 1. In the Postman app, choose **Send** to make the request.
-1. Watch for the response body, which should look something like this. Note that the names should be the same as you used in your **Request body** and the response should include the new user's `id`.
+1. Watch for the response body, which should look something like this. Note that the names will be the same as you used in your **Request body** and the response should include the new user's `id`.
 
     ```js
     {

@@ -1,0 +1,31 @@
+# .github/workflows/lint-pr.yml
+name: Lint Assignment
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Get changed markdown files
+        id: changed-files
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            **/*.md
+      
+      - name: Run markdownlint
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: nosborn/github-action-markdown-cli@v3
+        with:
+          files: ${{ steps.changed-files.outputs.all_changed_files }}
+          config_file: .markdownlint.json
+      
+      - name: Run Vale
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: errata-ai/vale-action@v2
+        with:
+          files: ${{ steps.changed-files.outputs.all_changed_files }}

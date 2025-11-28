@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  lint:
+  lint-pr-files:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -24,7 +24,19 @@ jobs:
         with:
           files: ${{ steps.changed-files.outputs.all_changed_files }}
           config_file: .markdownlint.json
-      
+
+      - name: Install Vale
+        run: |
+          wget https://github.com/errata-ai/vale/releases/download/v3.0.7/vale_3.0.7_Linux_64-bit.tar.gz
+          tar -xvzf vale_3.0.7_Linux_64-bit.tar.gz
+          sudo mv vale /usr/local/bin/
+          vale --version
+
+      - name: Show Vale config
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          vale ls-config
+
       - name: Run Vale
         if: steps.changed-files.outputs.any_changed == 'true'
         continue-on-error: true

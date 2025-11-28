@@ -25,7 +25,7 @@ last_updated: "2025-09-03"
 # markdownlint-enable
 ---
 
-# `user` resource
+# `user` resource 
 
 Base endpoint:
 

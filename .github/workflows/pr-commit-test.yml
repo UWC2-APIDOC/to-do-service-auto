@@ -1,0 +1,65 @@
+# .github/workflows/check-commits.yml
+name: Check pull request commits
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  check-commits:
+    name: Verify commit structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Check if branch is up to date
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          
+          if ! git merge-base --is-ancestor $BASE_SHA $HEAD_SHA; then
+            echo "::warning::PR branch is not up to date with ${{ github.event.pull_request.base.ref }}. Consider updating your main branch and rebasing this feature branch. For more info: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Updating-Your-Branch"
+          else
+            echo "✓ Branch is up to date with ${{ github.event.pull_request.base.ref }}"
+          fi
+      
+      - name: Check commit requirements
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          
+          # Count commits in pull request
+          COMMIT_COUNT=$(git rev-list --count $BASE_SHA..$HEAD_SHA)
+          echo "New commits found in pull request: $COMMIT_COUNT"
+          
+          # Check for merge commits
+          MERGE_COMMITS=$(git rev-list --merges $BASE_SHA..$HEAD_SHA | wc -l)
+          echo "Merge commits in pull request: $MERGE_COMMITS"
+          
+          FAILED=false
+          
+          if [ $COMMIT_COUNT -ne 1 ]; then
+            # log commit count error
+            echo "Error: Pull request must contain exactly one new commit; $COMMIT_COUNT commits found."
+            # Create annotation for commit count error using a heredoc
+            echo "::error::Your pull request has $COMMIT_COUNT commits. A pull request must contain only one new commit. For more info, review: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Squashing-Commits"
+            FAILED=true
+          fi
+          
+          if [ $MERGE_COMMITS -gt 0 ]; then
+            # log merge commit error
+            echo "Error: Pull request must have no merge commits; $MERGE_COMMITS merge commits found."
+            # Create annotation for merge commit error using a heredoc
+            echo "::error::Your pull request contains merge commits. This project doesn't allow merge commits. For more info, review: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Avoiding-Merge-Commits"
+            FAILED=true
+          fi
+          
+          if [ "$FAILED" = true ]; then
+            exit 1
+          fi
+          
+          echo "✓ The pull request has exactly 1 new commit and no merge commits."
+          

@@ -5,6 +5,42 @@ on:
     types: [opened, synchronize]
 
 jobs:
+  check-file-locations:
+    name: Verify file locations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Get files outside allowed directories
+        id: outside-allowed
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            !docs/**
+            !assignments/**
+      
+      - name: Check unauthorized file changes
+        if: steps.outside-allowed.outputs.any_changed == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const author = context.payload.pull_request.user.login;
+            
+            const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: author
+            });
+            
+            if (permission.permission === 'admin' || permission.permission === 'write') {
+              console.log(`✓ User ${author} has write access and can modify files outside /docs and /assignments`);
+            } else {
+              core.setFailed(`Only files in /docs/ and /assignments/ directories can be modified by students. Detected changes outside these directories.`);
+              console.log('Unauthorized files changed:');
+              console.log('${{ steps.outside-allowed.outputs.all_changed_files }}'.split(' ').join('\n'));
+              console.log('📖 Help: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/File-Locations');
+            }
+
   check-commits:
     name: Verify commit structure
     runs-on: ubuntu-latest

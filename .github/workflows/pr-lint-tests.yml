@@ -19,6 +19,7 @@ jobs:
         with:
           files: |
             **/*.md
+          separator: ','
 
   markdownlint:
     needs: get-changed-files

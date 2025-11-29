@@ -8,18 +8,26 @@ jobs:
   get-changed-files:
     runs-on: ubuntu-latest
     outputs:
-      changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
-      any_changed: ${{ steps.changed-files.outputs.any_changed }}
+      any_changed: ${{ steps.changed-files-mdlint.outputs.any_changed }}
+      changed_files_mdlint: ${{ steps.changed-files-mdlint.outputs.all_changed_files }}
+      changed_files_vale: ${{ steps.changed-files-vale.outputs.all_changed_files }}
     steps:
       - uses: actions/checkout@v3
       
-      - name: Get changed markdown files
-        id: changed-files
+      - name: Get changed markdown file list for vale
+        id: changed-files-vale
         uses: tj-actions/changed-files@v40
         with:
           files: |
             **/*.md
           separator: ','
+
+      - name: Get changed markdown file list for markdownlint
+        id: changed-files-mdlint
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            **/*.md
 
   markdownlint:
     needs: get-changed-files
@@ -31,7 +39,7 @@ jobs:
       - name: Run markdownlint
         uses: nosborn/github-action-markdown-cli@v3
         with:
-          files: ${{ needs.get-changed-files.outputs.changed_files }}
+          files: ${{ needs.get-changed-files.outputs.changed_files_mdlint }}
           config_file: .markdownlint.json
   
   vale:
@@ -56,7 +64,7 @@ jobs:
         uses: errata-ai/vale-action@v2.1.1
         with:
           version: '3.12.0'
-          files: ${{ needs.get-changed-files.outputs.changed_files }}
+          files: ${{ needs.get-changed-files.outputs.changed_files_vale }}
           separator: ' '
           # assumes that config: .vale.ini
           fail_on_error: true

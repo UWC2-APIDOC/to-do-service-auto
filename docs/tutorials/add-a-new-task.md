@@ -35,15 +35,18 @@ Expect this tutorial to take about 15 minutes to complete.
 
 ## Before you start
 
-Make sure you've completed the [Before you start a tutorial](../before-you-start-a-tutorial.md) topic on the development system you'll use for the tutorial.
+Make sure you've completed the [Before you start a tutorial](../before-you-start-a-tutorial.md)
+topic on the development system you'll use for the tutorial.
 
 ## Add a new task
 
-Adding a new task to the service requires that you use the `POST` method to store the details of the new [`task`](../api/task.md) resource in the service.
+Adding a new task to the service requires that you use the `POST` method to store the details of
+the new [`task`](../api/task.md) resource in the service.
 
 To add a new task:
 
-1. Make sure your local service will be running, (or start it by using this command), if it's not.
+1. Make sure your local service is running.
+    If it's not running, start it by using this command:
 
     ```shell
     cd <your-github-workspace>/to-do-service/api
@@ -70,7 +73,9 @@ To add a new task:
         ```
 
 1. In the Postman app, choose **Send** to make the request.
-1. Watch for the response body, which should look something like this. Note that the names will be the same as you used in your **Request body** and the response should include the new user's `id`.
+1. Watch for the response body, which should look something like this.
+    Note that the names are the same as you used in your **Request body** and
+    the response should include the new user's `id`.
 
     ```js
     {

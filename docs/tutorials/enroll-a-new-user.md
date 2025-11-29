@@ -25,21 +25,25 @@ last_updated: "2025-09-03"
 # markdownlint-enable
 ---
 
-# Tutorial: Enroll A New User
-In this tutorial, you will learn the operations to call to
+# Tutorial: Enroll a new user
+
+In this tutorial, you learn the operations to call to
 enroll a new user into the service.
 
-Expect this tutorialio to take about 15 minutes (more or less) to complete.
+Expect this tutorials to take about 15 minutes to complete.
 
-## Before You Start
+## Before you start
 
-Make sure I have completed the [Before you start a tutorial](../before-you-start-a-tutorial.md) topic on the development system you'll use for the tutorial.
+Be sure to complete the [Before you start a tutorial](../before-you-start-a-tutorial.md) topic on
+the development system you'll use for the tutorial.
 
-## Enroll A New User
+## Enroll a new user
 
-Adding a new task to the service will require that you use the `POST` method (to store the details) of the new [`task`](../api/task.md) resource in the service.
+Adding a new task to the service requires that you use the `POST` method to store the details of
+the new [`task`](../api/task.md) resource in the service.
 
-Enrolling a new user in the service will equire that you use the `POST` method to store the details of a new [`user`](../api/user.md) resource in the service.
+Enrolling a new user in the service requires that you use the `POST` method to store the
+details of a new [`user`](../api/user.md) resource in the service.
 
 To enroll a new user:
 
@@ -68,7 +72,9 @@ To enroll a new user:
         ```
 
 1. In the Postman app, choose **Send** to make the request.
-1. Watch for the response body, which should look something like this. Note that the names should be the same as you used in your **Request body** and the response should include the new user's `id`.
+1. Watch for the response body, which should look something like this.
+    Note that the names should be the same as you used in your **Request body** and
+    the response should include the new user's `id`.
 
     ```js
     {

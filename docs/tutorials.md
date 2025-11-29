@@ -27,11 +27,10 @@ last_updated: "2025-09-03"
 
 # Tutorials
 
-These tutorials are available to help you start using the **To-Do service API**. PATCH and PUT and GET and POST will be supported. 
-
+These tutorials are available to help you start using the **To-Do Service API**.
 
 Be sure to review [Before you start a tutorial](before-you-start-a-tutorial.md)
 before you start your first tutorial.
 
-* [Enroll a new user](../.tutorials/enroll-a-new-user.md)
-* [Add a new task](tutorials/add-a-new-task.md)
+* [Enroll a new user](./tutorials/enroll-a-new-user.md)
+* [Add a new task](./tutorials/add-a-new-task.md)

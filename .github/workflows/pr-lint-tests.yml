@@ -35,7 +35,7 @@ jobs:
           changed_files=${{ steps.get-changed-files-list.outputs.all_changed_files }}
           IFS=',' read -ra files_array <<< "$changed_files"
           for file in "${files_array[@]}"; do
-            python3 tools/markdown-survey.py --action "$file"
+            python3 tools/list-vale-exceptions.py --action "$file"
           done
 
   markdown-files-lint:

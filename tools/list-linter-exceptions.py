@@ -234,4 +234,4 @@ Examples:
     
     args = parser.parse_args()
     main()
-# End of file tools/list-vale-exceptions.py
+# End of file tools/list-linter-exceptions.py

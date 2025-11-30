@@ -30,12 +30,12 @@ jobs:
           echo "Changed files:"
           echo "${{ steps.get-changed-files-list.outputs.all_changed_files }}" | tr ',' '\n'
 
-      - name: List Vale exceptions
+      - name: List linter exceptions
         run: |
           changed_files=${{ steps.get-changed-files-list.outputs.all_changed_files }}
           IFS=',' read -ra files_array <<< "$changed_files"
           for file in "${files_array[@]}"; do
-            python3 tools/list-vale-exceptions.py --action "$file"
+            python3 tools/list-linter-exceptions.py --action "$file"
           done
 
   markdown-files-lint:

@@ -32,11 +32,11 @@ This is a mock API to simulate the REST interface of an
 imaginary service.
 
 The To-Do Service provides a cloud-hosted task list through which
-subscribers can post tasks and receive reminders of those tasks.
+subscribers can add new tasks and receive reminders of those tasks.
 
 ## Quickstart
 
-[Post your first task _(coming soon)_](#quickstart) with the To-Do Service to see how easy it is to use!
+[Add your first task _(coming soon)_](#quickstart) with the To-Do Service to see how easy it is to use!
 
 ## Tutorials
 

@@ -26,11 +26,11 @@ last_updated: "2026-03-01"
 # markdownlint-enable
 ---
 
+# Get all users
+
 <!-- vale Vale.Terms = NO -->
 <!-- vale Google.Passive = NO -->
 <!-- vale Google.Headings = NO -->
-
-# Get all users
 
 Returns an array of [`user`](user.md) objects that contains all users that have registered with the service.
 

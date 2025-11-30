@@ -26,8 +26,6 @@ last_updated: "2026-03-01"
 # markdownlint-enable
 ---
 
-<!-- vale Vale.Terms = NO -->
-
 # Get a user by ID
 
 <!-- vale Google.Passive = NO -->

@@ -38,7 +38,6 @@ last_updated: "2026-03-01"
 Base endpoint:
 
 ```shell
-
 {server_url}/tasks
 ```
 

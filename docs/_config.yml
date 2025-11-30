@@ -31,13 +31,13 @@ description: This is a mock API to simulate the REST interface of an
   list through which subscribers can post tasks and receive
   reminders of those tasks.
 #   !!! CHANGE THIS TO MATCH THE URL OF YOUR PUBLISHED DOCS
-url: https://uwc2-apidoc.github.io/to-do-service-au25
-baseurl: "/to-do-service-au25"
+url: https://uwc2-apidoc.github.io/to-do-service-auto
+baseurl: "/to-do-service-auto"
 #
 #   +++ REMOVE IF YOU DON'T WANT THE AUX LINKS AT THE TOP OF THE PAGE
 #       OR ADD MORE LINKS AS SUPPORTED BY THE THEME
 aux_links: 
-  To-Do Service repo: https://github.com/uwc2-apidoc/to-do-service-au25
+  To-Do Service repo: https://github.com/uwc2-apidoc/to-do-service-auto
 #
 #   Configures how each topic URL is formatted
 #   +++ YOU CAN CHANGE THIS, BUT YOU PROBABLY DO NOT WANT TO
@@ -91,7 +91,7 @@ heading_anchors: true
 # Enable or disable the side/mobile menu globally
 # Nav menu can also be selectively enabled or disabled using page variables or the minimal layout
 #
-#   +++ SET TO FALSE TO HIDE THE LEFT NAVIGATION
+#   +++ SET TO false TO HIDE THE LEFT NAVIGATION
 nav_enabled: true
 
 # Sort order for navigation links
@@ -116,7 +116,7 @@ back_to_top_text: "Back to top"
 
 #
 #   !!! CHANGE THIS VALUE TO APPLY TO YOUR DOCUMENTATION
-footer_content: "Copyright &copy; 2025 University of Washington. Distributed by an <a href=\"https://raw.githubusercontent.com/uwc2-apidoc/to-do-service-au25/main/LICENSE\">MIT license.</a>"
+footer_content: "Copyright &copy; 2025 University of Washington. Distributed by an <a href=\"https://raw.githubusercontent.com/uwc2-apidoc/to-do-service-auto/main/LICENSE\">MIT license.</a>"
 #
 # - - - - - - - - - - - - - - - - 
 #
@@ -128,6 +128,9 @@ footer_content: "Copyright &copy; 2025 University of Washington. Distributed by 
 #   THESE PROPERTIES AND VALUES ARE NOT A PART OF _config.yml
 #     THEY ARE HERE ONLY TO SERVE AS DOCUMENTATION.
 #
+#   Note: tags labeled as for use by AI are experimental and
+#         might not be supported by any AI tools.
+#
 #   layout: default
 #       Specifies the page layout to use for the topic.
 #       The default layout should work for most pages. 
@@ -138,16 +141,7 @@ footer_content: "Copyright &copy; 2025 University of Washington. Distributed by 
 #       This value is used to sort the menu items at the same menu level
 #         in the navigation, where 1 is the first entry, 2 is below 1, etc.
 #       See also https://just-the-docs.com/docs/navigation/main/order/
-#
-#   has_children: true
-#       Specifies if this topic has sub-topics. Value can be true or false.
-#       If the topic has sub-topics, the sub-topics must contain the parent
-#         property in their front matter and list the page name of the topic
-#         as the value.
-#       See also:
-#             https://just-the-docs.com/docs/navigation/main/levels/
-#             https://just-the-docs.com/docs/navigation/main/ancestry/
-#
+
 #   parent: user resource
 #       Specifies the topic's immediate parent in the navigation hierarchy.
 #       The value is the page title of the parent topic.

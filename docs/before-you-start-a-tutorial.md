@@ -1,10 +1,12 @@
 ---
 # markdownlint-disable
-# vale  off
+# vale off
+# tags used by just-the-docs theme
 layout: default
 nav_order: 2
 # tags used by AI files
 description: Describes how to configure your local computer to run a local instance of the to-do-service.
+topic_type: tutorial
 tags: 
     - introduction
 categories: 
@@ -18,7 +20,7 @@ related_pages:
 examples: []
 api_endpoints: []
 version: "v1.0"
-last_updated: "2025-09-03"
+last_updated: "2026-03-01"
 # vale  on
 # markdownlint-enable
 ---
@@ -43,7 +45,7 @@ long-term support, also known as _LTS_, version of the Windows, MacOS, or Linux 
 - The following software on your development system:
     - [Git, command line](https://docs.github.com/en/get-started/quickstart/set-up-git)
     - [GitHub Desktop](https://desktop.github.com). This is optional, but recommended.
-    - A fork of the [To-Do-Service repository](https://github.com/UWC2-APIDOC/to-do-service-au25)
+    - A fork of the [To-Do-Service repository](https://github.com/UWC2-APIDOC/to-do-service-auto)
     - A [current or LTS version of `node.js`](https://nodejs.org/en/download)
     - Version 0.17.4 of [json-server](https://www.npmjs.com/package/json-server/v/0.17.4)
     - A current copy of the database file. You can get this by syncing your fork.
@@ -66,13 +68,13 @@ To test your development system:.
 
 1. Create and checkout a test branch of your fork of the To-Do-service repository.
     Your `GitHub repository workspace` is the directory that contains your fork of
-    the `to-do-service-au25` repository.
+    the `to-do-service-auto` repository.
 
     ```shell
     cd <your GitHub repository workspace>
     ls
     # (see the to-do-service directory in the list)
-    cd to-do-service-au25
+    cd to-do-service-auto
     git checkout -b tutorial-test
     cd api
     json-server -w to-do-db-source.json

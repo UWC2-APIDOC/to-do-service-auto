@@ -1,11 +1,13 @@
 ---
 # markdownlint-disable
-# vale  off
+# vale off
+# tags used by just-the-docs theme
 layout: default
 nav_order: 1
 parent: Tutorials
 # tags used by AI files
 description: Add a `task` resource to the service
+topic_type: tutorial
 tags:
     - api
 categories: 
@@ -21,7 +23,7 @@ examples: []
 api_endpoints:
     - POST /tasks
 version: "v1.0"
-last_updated: "2025-09-03"
+last_updated: "2026-03-01"
 # vale  on
 # markdownlint-enable
 ---
@@ -35,11 +37,13 @@ Expect this tutorial to take about 15 minutes to complete.
 
 ## Before you start
 
-Make sure you've completed the [Before you start a tutorial](../before-you-start-a-tutorial.md) topic on the development system you'll use for the tutorial.
+Make sure you've completed the [Before you start a tutorial](../before-you-start-a-tutorial.md)
+topic on the development system you'll use for the tutorial.
 
 ## Add a new task
 
-Adding a new task to the service requires that you use the `POST` method to store the details of the new [`task`](../api/task.md) resource in the service.
+Adding a new task to the service requires that you use the `POST` method to store the details of
+the new [`task`](../api/task.md) resource in the service.
 
 To add a new task:
 
@@ -70,7 +74,9 @@ To add a new task:
         ```
 
 1. In the Postman app, choose **Send** to make the request.
-1. Watch for the response body, which should look something like this. Note that the names should be the same as you used in your **Request body** and the response should include the new user's `id`.
+1. Watch for the response body, which should look something like this.
+    Note that the names should be the same as you used in
+    your **Request body** and the response should include the new user's `id`.
 
     ```js
     {

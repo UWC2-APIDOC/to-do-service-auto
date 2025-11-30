@@ -1,12 +1,14 @@
 ---
 # markdownlint-disable
-# vale  off
+# vale off
+# tags used by just-the-docs theme
 layout: default
 nav_order: 3
 has_children: true
 has_toc: false
 # tags used by AI files
 description: Lists the tutorials available in the documentation
+topic_type: overview
 tags: 
     - introduction
 categories:
@@ -20,7 +22,7 @@ related_pages:
 examples: []
 api_endpoints: []
 version: "v1.0"
-last_updated: "2025-09-03"
+last_updated: "2026-03-01"
 # vale  on
 # markdownlint-enable
 ---

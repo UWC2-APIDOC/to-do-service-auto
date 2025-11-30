@@ -1,11 +1,13 @@
 ---
 # markdownlint-disable
-# vale  off
+# vale off
+# tags used by just-the-docs theme
 layout: default
 parent: user resource
 nav_order: 1
 # tags used by AI files
 description: GET all `user` resources from the service
+topic_type: reference
 tags:
     - api
 categories:
@@ -19,10 +21,14 @@ examples: []
 api_endpoints: 
     - GET /users
 version: "v1.0"
-last_updated: "2025-09-03"
+last_updated: "2026-03-01"
 # vale  on
 # markdownlint-enable
 ---
+
+<!-- vale Vale.Terms = NO -->
+<!-- vale Google.Passive = NO -->
+<!-- vale Google.Headings = NO -->
 
 # Get all users
 
@@ -72,4 +78,4 @@ None
 | Status value | Return status | Description |
 | ------------- | ----------- | ----------- |
 | 200 | Success | Requested data returned successfully |
-|  ECONNREFUSED | N/A | Service is offline. Start the service and try again. |
+| ECONNREFUSED | N/A | Service is offline. Start the service and try again. |

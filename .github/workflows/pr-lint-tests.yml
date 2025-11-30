@@ -72,6 +72,14 @@ jobs:
         run: |
           vale ls-config
 
+      - name: List Vale exceptions
+        run: |
+          changed_files=${{ needs.get-changed-files.outputs.changed_files_list }}
+          IFS=',' read -ra files_array <<< "$changed_files"
+          for file in "${files_array[@]}"; do
+            python3 tools/markdown-survey.py --action "$file"
+          done
+
       - name: Run Vale on
         uses: errata-ai/vale-action@v2.1.1
         with:
@@ -80,5 +88,3 @@ jobs:
           separator: ','
           # assumes that config file is .vale.ini
           fail_on_error: true
-        # run: |
-        #   vale --config=.vale.ini --minAlertLevel=suggestion ${{ needs.get-changed-files.outputs.changed_files }}

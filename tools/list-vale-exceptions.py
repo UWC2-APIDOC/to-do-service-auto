@@ -167,7 +167,7 @@ def output_action(filepath, exceptions):
     
     # Overall summary annotation
     if vale_count + md_count > 0:
-        annotate("warning",
+        annotate("notice",
                  f"Found {vale_count} Vale and {md_count} markdownlint exceptions",
                  filename=str(filepath),
                  title="Exception Summary")

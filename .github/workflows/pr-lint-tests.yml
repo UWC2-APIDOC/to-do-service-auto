@@ -37,7 +37,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
+      - name: Count markdown notations
+        run: |
+          changed_files=${{ needs.get-changed-files.outputs.changed_files_list }}
+          IFS=',' read -ra files_array <<< "$changed_files"
+          for file in "${files_array[@]}"; do
+            python3 tools/markdown-survey.py --action "$file"
+          done
+
       - name: Run MarkdownLint on
         uses: DavidAnson/markdownlint-cli2-action@v21
         with:

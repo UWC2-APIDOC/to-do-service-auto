@@ -64,7 +64,7 @@ long-term support, also known as _LTS_, version of the Windows, MacOS, or Linux 
 
 ## Test your development system
 
-To test your development system:.
+To test your development system:
 
 1. Create and checkout a test branch of your fork of the To-Do-service repository.
     Your `GitHub repository workspace` is the directory that contains your fork of

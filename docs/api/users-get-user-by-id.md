@@ -31,8 +31,8 @@ last_updated: "2026-03-01"
 <!-- vale Google.Passive = NO -->
 <!-- vale Google.Headings = NO -->
 
-Returns an array of  [`user`](user.md) objects that contains only
-the user specified by the `id` parameter, if it exists.
+Returns an array of  [`user`](user.md) resources that match
+the user specified by the `id` parameter, if one exists.
 
 ## URL
 

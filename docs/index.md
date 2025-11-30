@@ -36,7 +36,8 @@ subscribers can add new tasks and receive reminders of those tasks.
 
 ## Quickstart
 
-[Add your first task _(coming soon)_](#quickstart) with the To-Do Service to see how easy it is to use!
+Soon, this link will let you [Add your first task](#quickstart) with
+the To-Do Service to see how easy it is to use.
 
 ## Tutorials
 

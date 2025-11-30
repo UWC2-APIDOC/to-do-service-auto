@@ -1,15 +1,10 @@
 Ctrl
 curl
-DELETE
-GET
 Git
 GitHub
 GitHub Desktop
 Markdown
 Postman
-PATCH
-POST
-PUT
 [R|r]ebased?
 [R|r]ebasing
 [R|r]epos?

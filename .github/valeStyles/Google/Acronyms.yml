@@ -15,6 +15,7 @@ exceptions:
   - CSS
   - CSV
   - DEBUG
+  - DELETE
   - DITA
   - DOM
   - DPI
@@ -42,10 +43,12 @@ exceptions:
   - NOTE
   - NVDA
   - OSS
+  - PATCH
   - PATH
   - PDF
   - PHP
   - POST
+  - PUT
   - RAM
   - REPL
   - REST

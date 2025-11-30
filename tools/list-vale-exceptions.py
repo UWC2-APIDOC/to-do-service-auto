@@ -60,8 +60,23 @@ def list_vale_exceptions(content):
 
 def annotate(level, message, filename=None, line=None, col=None, title=None):
     """Output a GitHub Actions annotation."""
-    parts = [f"::{level}"]
+    show=False
+    level_options=list(['notice', 'warning', 'error'])
+
+    # Check if the annotation should be shown based on specified level
+    if level not in level_options:
+        # default to display the message
+        show=True
+    elif (level_options.index(level) >= level_options.index(args.annotation)):
+        # if the message level is equal or higher than the set annotation level,
+        show=True
+
+    if not show:
+        return
     
+    # else continue to output the annotation
+    parts = [f"::{level}"]
+
     properties = []
     if filename:
         properties.append(f"file={filename}")
@@ -80,6 +95,8 @@ def annotate(level, message, filename=None, line=None, col=None, title=None):
 
 def output_normal(filepath, exceptions):
     """Output in normal format for interactive use."""
+    # these messages are also written to the log file
+
     vale_count = len(exceptions['vale'])
     md_count = len(exceptions['markdownlint'])
     
@@ -156,30 +173,6 @@ def output_action(filepath, exceptions):
                  title="Exception Summary")
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='Scan markdown files for Vale and markdownlint exception tags.',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  %(prog)s README.md                 # Normal output
-  %(prog)s --action docs/api.md      # GitHub Actions output with annotations
-        """
-    )
-    
-    parser.add_argument(
-        'filename',
-        type=str,
-        help='Path to the markdown file to scan'
-    )
-    
-    parser.add_argument(
-        '--action',
-        action='store_true',
-        help='Output format for GitHub Actions with annotations'
-    )
-    
-    args = parser.parse_args()
-    
     filepath = Path(args.filename)
     
     if not filepath.exists():
@@ -209,5 +202,36 @@ Examples:
         output_normal(filepath, exceptions)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description='Scan markdown files for Vale and markdownlint exception tags.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s README.md                 # Normal output
+  %(prog)s --action docs/api.md      # GitHub Actions output with annotations
+        """
+    )
+
+    parser.add_argument(
+        'filename',
+        type=str,
+        help='Path to the markdown file to scan'
+    )
+    
+    parser.add_argument(
+        '--action','-a',
+        action='store_true',
+        help='Output format for GitHub Actions with annotations'
+    )
+       
+    parser.add_argument(
+        '--annotation','-l',
+        choices=['notice', 'warning', 'error'],
+        default='warning',
+        action='store',
+        help='Minimum message level to send an annotation to GitHub Actions (default: warning)'
+    )
+    
+    args = parser.parse_args()
     main()
 # End of file tools/list-vale-exceptions.py

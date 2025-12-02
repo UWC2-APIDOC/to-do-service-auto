@@ -1,0 +1,228 @@
+# .github/workflows/test-api-examples.yml
+name: Test API Documentation Examples
+on:
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:    # Enables manual trigger for testing
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  test-api-examples:
+    name: Test API code examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      
+      - name: Install Python dependencies
+        run: |
+          pip install pyyaml --break-system-packages
+          pip install jsonschema --break-system-packages
+      
+      - name: Get changed markdown files
+        id: changed-files
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            docs/**/*.md
+      
+      - name: List changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "Changed markdown files:"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n'
+          echo ""
+          echo "Total changed files: ${{ steps.changed-files.outputs.all_changed_files_count }}"
+      
+      - name: Check for testable files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        id: check-testable
+        run: |
+          # Check if any changed files have test configurations
+          HAS_TESTABLE=false
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if grep -q "^test:" "$file" 2>/dev/null; then
+              HAS_TESTABLE=true
+              break
+            fi
+          done
+          echo "has_testable=$HAS_TESTABLE" >> $GITHUB_OUTPUT
+          
+          if [ "$HAS_TESTABLE" = "true" ]; then
+            echo "✓ Found files with test configurations"
+          else
+            echo "ℹ️  No testable examples found in changed files"
+          fi
+      
+      - name: Determine test configuration
+        if: steps.check-testable.outputs.has_testable == 'true'
+        id: test-config
+        run: |
+          # Extract test configuration from the first testable file
+          # All files should use the same test database and server
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if grep -q "^test:" "$file" 2>/dev/null; then
+            # Extract test database path
+            DB_PATH=$(python3 -c "
+            import yaml, re, sys
+            with open('$file', 'r') as f:
+                content = f.read()
+            fm_match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
+            if fm_match:
+                try:
+                    metadata = yaml.safe_load(fm_match.group(1))
+                    test_config = metadata.get('test', {})
+                    db_path = test_config.get('local_database', '/api/to-do-db-source.json')
+                    print(db_path.lstrip('/'))
+                except: pass
+                    " 2>/dev/null)
+                    
+                    if [ -n "$DB_PATH" ]; then
+                        echo "test_db=$DB_PATH" >> $GITHUB_OUTPUT
+                        echo "Using test database: $DB_PATH"
+                        break
+                    fi
+            fi
+          done
+          
+          # Default if not found
+          if [ -z "$DB_PATH" ]; then
+            echo "test_db=api/to-do-db-source.json" >> $GITHUB_OUTPUT
+            echo "Using default test database: api/to-do-db-source.json"
+          fi
+      
+      - name: Install json-server
+        if: steps.check-testable.outputs.has_testable == 'true'
+        run: |
+          npm install -g json-server@0.17.4
+          json-server --version
+      
+      - name: Start json-server
+        if: steps.check-testable.outputs.has_testable == 'true'
+        run: |
+          echo "Starting json-server with database: ${{ steps.test-config.outputs.test_db }}"
+          
+          # Check if test database exists
+          if [ ! -f "${{ steps.test-config.outputs.test_db }}" ]; then
+            echo "::error::Test database not found: ${{ steps.test-config.outputs.test_db }}"
+            exit 1
+          fi
+          
+          # Start json-server in background
+          json-server --watch ${{ steps.test-config.outputs.test_db }} --port 3000 > json-server.log 2>&1 &
+          SERVER_PID=$!
+          echo $SERVER_PID > json-server.pid
+          
+          # Wait for server to be ready
+          echo "Waiting for json-server to start..."
+          for i in {1..10}; do
+            if curl -s http://localhost:3000 > /dev/null 2>&1; then
+              echo "✓ json-server is running on http://localhost:3000"
+              echo "✓ Server PID: $SERVER_PID"
+              exit 0
+            fi
+            sleep 1
+          done
+          
+          echo "::error::json-server failed to start"
+          cat json-server.log
+          exit 1
+      
+      - name: Make test script executable
+        if: steps.check-testable.outputs.has_testable == 'true'
+        run: |
+          chmod +x ./tools/test-api-docs.py || true
+      
+      - name: Test changed documentation files
+        if: steps.check-testable.outputs.has_testable == 'true'
+        id: test-files
+        run: |
+          TOTAL_TESTS=0
+          PASSED_TESTS=0
+          FAILED_TESTS=0
+          TESTED_FILES=0
+          
+          echo "Testing changed markdown files..."
+          echo ""
+          
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            # Check if file has test configuration
+            if grep -q "^test:" "$file" 2>/dev/null; then
+              TESTED_FILES=$((TESTED_FILES + 1))
+              
+              # Run test script
+              if python3 ./tools/test-api-docs.py "$file" --action; then
+                echo "✓ $file - PASSED"
+              else
+                echo "✗ $file - FAILED"
+                FAILED_TESTS=$((FAILED_TESTS + 1))
+              fi
+              echo ""
+            fi
+          done
+          
+          echo "test_summary<<EOF" >> $GITHUB_OUTPUT
+          echo "Tested files: $TESTED_FILES" >> $GITHUB_OUTPUT
+          echo "Failed files: $FAILED_TESTS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          if [ $FAILED_TESTS -gt 0 ]; then
+            echo "::error::$FAILED_TESTS file(s) failed testing"
+            exit 1
+          fi
+          
+          if [ $TESTED_FILES -eq 0 ]; then
+            echo "ℹ️  No testable files found"
+          else
+            echo "✓ All $TESTED_FILES file(s) passed testing"
+          fi
+      
+      - name: Stop json-server
+        if: always() && steps.check-testable.outputs.has_testable == 'true'
+        run: |
+          if [ -f json-server.pid ]; then
+            SERVER_PID=$(cat json-server.pid)
+            echo "Stopping json-server (PID: $SERVER_PID)..."
+            kill $SERVER_PID 2>/dev/null || true
+            rm json-server.pid
+            echo "✓ json-server stopped"
+          fi
+      
+      - name: Upload json-server logs
+        if: always() && steps.check-testable.outputs.has_testable == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: json-server-logs
+          path: json-server.log
+          retention-days: 7
+      
+      - name: Test summary
+        if: always() && steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "## API Example Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.check-testable.outputs.has_testable }}" != "true" ]; then
+            echo "ℹ️ No testable API examples found in changed files" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.test-files.outcome }}" == "success" ]; then
+            echo "ℹ️ All API examples tested successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.test-files.outputs.test_summary }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ Some API examples failed testing" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.test-files.outputs.test_summary }}" >> $GITHUB_STEP_SUMMARY
+          fi

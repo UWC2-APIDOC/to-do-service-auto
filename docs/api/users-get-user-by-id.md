@@ -17,7 +17,15 @@ importance: 7
 prerequisites: 
     - /api/user
 related_pages: []
-examples: []
+examples:
+    - GET /users/{id}
+test:
+    test_apps:
+        - json-server@0.17.4
+    server_url: localhost:3000
+    local_database: /api/to-do-db-source-test.json
+    testable:
+        - GET example / 200
 api_endpoints: 
     - GET /users
 version: "v1.0"
@@ -28,50 +36,61 @@ last_updated: "2026-03-01"
 
 # Get a user by ID
 
-<!-- vale Google.Passive = NO -->
-<!-- vale Google.Headings = NO -->
-
 Returns an array of  [`user`](user.md) objects that contains only
 the user specified by the `id` parameter, if it exists.
 
-## URL
+[Jump to examples](#examples)
+
+## Endpoint
 
 ```shell
-
 {server_url}/users/{id}
 ```
 
 ## Parameters
 
-| Parameter name | Type | Description |
-| -------------- | ------ | ------------ |
-| `id` | number | The record ID of the user to return |
+| Name | Type | Value | Description |
+| ----- | ------ | ------ | ------------ |
+| `id` | URL | number | The record ID of the `user` resource to return |
 
 ## Request headers
 
-None
+| Header | Value | Required |
+| ------ | ----- | -------- |
+| `Accept` | `application/json` | No |
 
 ## Request body
 
 None
 
-## Return body
+## Response body
 
-```js
-[
-    {
-        "lastName": "Smith",
-        "firstName": "Ferdinand",
-        "email": "f.smith@example.com",
-        "id": 1
-    }
-]
+Returns a [`user` resource](./user.md#resource-properties)
+
+## Examples
+
+### `GET` example request
+
+```bash
+curl -G -H "Accept: application/json" \
+    --url "http://localhost:3000/users/2"
 ```
 
-## Return status
+#### `GET` example response
 
-| Status value | Return status | Description |
-| ------------- | ----------- | ----------- |
-| 200 | Success | Requested data returned successfully |
-| 404 | Error | Specified user record not found |
-| ECONNREFUSED | N/A | Service is offline. Start the service and try again. |
+```json
+    {
+        "lastName": "Jones",
+        "firstName": "Jill",
+        "email": "j.jones@example.com",
+        "id": 2
+    }
+```
+
+## Response status
+
+| HTTP status value | Description |
+| ------------- | ----------- |
+| 200 | **Success**: Requested data returned successfully |
+| 404 | **Error**: Specified user record not found |
+| ECONNREFUSED | Service is offline. Start, or restart the service and try again. |

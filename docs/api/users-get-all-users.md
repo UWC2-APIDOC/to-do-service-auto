@@ -17,9 +17,17 @@ importance: 7
 prerequisites:
     - /api/user
 related_pages: []
-examples: []
-api_endpoints: 
+examples:
     - GET /users
+test:
+    test_apps:
+        - json-server@0.17.4
+    server_url: localhost:3000
+    local_database: /api/to-do-db-source-test.json
+    testable:
+        - GET example
+api_endpoints: 
+    - /users
 version: "v1.0"
 last_updated: "2026-03-01"
 # vale  on
@@ -28,16 +36,13 @@ last_updated: "2026-03-01"
 
 # Get all users
 
-<!-- vale Vale.Terms = NO -->
-<!-- vale Google.Passive = NO -->
-<!-- vale Google.Headings = NO -->
-
 Returns an array of [`user`](user.md) objects that contains all users that have registered with the service.
 
-## URL
+[Jump to examples](#examples)
+
+## Endpoint
 
 ```shell
-
 {server_url}/users
 ```
 
@@ -47,15 +52,17 @@ None
 
 ## Request headers
 
-None
+| Header | Value | Required |
+| ------ | ----- | -------- |
+| `Accept` | `application/json` | No |
 
 ## Request body
 
 None
 
-## Return body
+## Response body
 
-```js
+```json
 [
     {
         "lastName": "Smith",
@@ -65,17 +72,44 @@ None
     },
     {
         "lastName": "Jones",
-        "firstName": "Jillio",
-        "email": "jlo.jones@example.com",
+        "firstName": "Jill",
+        "email": "j.jones@example.com",
         "id": 2
     }
-    ...
 ]
 ```
 
-## Return status
+## Examples
 
-| Status value | Return status | Description |
-| ------------- | ----------- | ----------- |
-| 200 | Success | Requested data returned successfully |
-| ECONNREFUSED | N/A | Service is offline. Start the service and try again. |
+### `GET` example request
+
+```bash
+curl -G -H "Accept: application/json" \
+    --url "http://localhost:3000/users"
+```
+
+#### `GET` example response
+
+```json
+[
+    {
+        "lastName": "Smith",
+        "firstName": "Ferdinand",
+        "email": "f.smith@example.com",
+        "id": 1
+    },
+    {
+        "lastName": "Jones",
+        "firstName": "Jill",
+        "email": "j.jones@example.com",
+        "id": 2
+    }
+]
+```
+
+## Response status
+
+| HTTP status value | Description |
+| ------------- | ----------- |
+| 200 | **Success:** Requested data returned successfully |
+| ECONNREFUSED | Service is offline. Start, or restart the service and try again. |

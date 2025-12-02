@@ -46,10 +46,9 @@ Learn more about the [task resource](task.md).
 
 ## Resource properties
 
-Sample `user` resource
+Example `user` resource
 
-```js
-
+```json
 {
     "lastName": "Smith",
     "firstName": "Ferdinand",

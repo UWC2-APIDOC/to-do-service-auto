@@ -50,7 +50,7 @@ the service first. Learn more about the [user resource](user.md).
 
 Sample `task` resource
 
-```js
+```json
 
 {
     "userId": 1,

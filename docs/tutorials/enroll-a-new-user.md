@@ -65,7 +65,7 @@ To enroll a new user:
     * **Request body**:
         You can change the values of each property as you'd like.
 
-        ```js
+        ```json
         {
             "lastName": "Jones",
             "firstName": "Jenny",
@@ -78,7 +78,7 @@ To enroll a new user:
     Note that the names should be the same as you used in your **Request body** and
     the response should include the new user's `id`.
 
-    ```js
+    ```json
     {
         "lastName": "Jones",
         "firstName": "Jenny",

@@ -92,7 +92,7 @@ To test your development system:.
 3. If the service is running correctly, you should see a list of users from the service,
     such as in this example.
 
-    ```js
+    ```json
     [
         {
             "lastName": "Smith",

@@ -63,7 +63,7 @@ To add a new task:
     * **Request body**:
         You can change the values of each property as you'd like.
 
-        ```js
+        ```json
         {
             "userId": 3,
             "title": "Get new tires",
@@ -78,7 +78,7 @@ To add a new task:
     Note that the names should be the same as you used in
     your **Request body** and the response should include the new user's `id`.
 
-    ```js
+    ```json
     {
         "userId": 3,
         "title": "Get new tires",

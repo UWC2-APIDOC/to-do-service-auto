@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from doc_test_utils import (
-    parse_frontmatter,
+    parse_front_matter,
     read_markdown_file,
     get_test_config,
     get_server_database_key,
@@ -24,10 +24,10 @@ from doc_test_utils import (
 )
 
 
-def test_parse_frontmatter():
-    """Test YAML frontmatter parsing from markdown content."""
+def test_parse_front_matter():
+    """Test YAML front matter parsing from markdown content."""
     print("\n" + "="*60)
-    print("TEST: parse_frontmatter()")
+    print("TEST: parse_front_matter()")
     print("="*60)
     
     # Test valid frontmatter
@@ -42,17 +42,17 @@ test:
 # Test Page
 """
     
-    metadata = parse_frontmatter(content)
-    assert metadata is not None, "Should parse valid frontmatter"
+    metadata = parse_front_matter(content)
+    assert metadata is not None, "Should parse valid front matter"
     assert metadata.get('layout') == 'default', f"Expected 'default', got {metadata.get('layout')}"
     assert metadata.get('description') == 'Test page', f"Expected 'Test page', got {metadata.get('description')}"
-    print("  SUCCESS: Valid frontmatter parsed correctly")
+    print("  SUCCESS: Valid front matter parsed correctly")
     
-    # Test missing frontmatter
-    content_no_fm = "# Test Page\nNo frontmatter here"
-    metadata = parse_frontmatter(content_no_fm)
-    assert metadata is None, "Should return None for missing frontmatter"
-    print("  SUCCESS: Missing frontmatter returns None")
+    # Test missing front matter
+    content_no_fm = "# Test Page\nNo front matter here"
+    metadata = parse_front_matter(content_no_fm)
+    assert metadata is None, "Should return None for missing front matter"
+    print("  SUCCESS: Missing front matter returns None")
     
     # Test invalid YAML
     content_bad_yaml = """---
@@ -60,12 +60,12 @@ layout: [unclosed list
 ---
 # Test Page
 """
-    metadata = parse_frontmatter(content_bad_yaml)
+    metadata = parse_front_matter(content_bad_yaml)
     assert metadata is None, "Should return None for invalid YAML"
     print("  SUCCESS: Invalid YAML returns None")
     
-    print("  ✓ All parse_frontmatter tests passed")
-    
+    print("  ✓ All parse_front_matter tests passed")
+
 
 def test_get_test_config():
     """Test extraction of test configuration from metadata."""
@@ -281,7 +281,7 @@ def run_all_tests():
     print("="*70)
     
     tests = [
-        test_parse_frontmatter,
+        test_parse_front_matter,
         test_get_test_config,
         test_get_server_database_key,
         test_log_console_output,
@@ -294,8 +294,8 @@ def run_all_tests():
     
     for test_func in tests:
         try:
-            if test_func():
-                passed += 1
+            test_func()
+            passed += 1
         except AssertionError as e:
             failed += 1
             print(f"\n  ✗ FAILED: {test_func.__name__}")
@@ -314,3 +314,4 @@ def run_all_tests():
 if __name__ == '__main__':
     success = run_all_tests()
     sys.exit(0 if success else 1)
+# end of file tools/tests/test_doc_test_utils.py

@@ -126,7 +126,7 @@ Created `tests/test_list_linter_exceptions.py` with comprehensive coverage:
 - `tests/test_data/clean.md` - Clean file with no exceptions
 
 ### Test Results:
-```
+```text
 ======================================================================
  TEST SUMMARY: 7 passed, 0 failed
 ======================================================================

@@ -8,7 +8,7 @@ tools/
 ├── doc_test_utils.py              # Shared utility module (clean, no tests)
 └── tests/
     ├── README.md                  # Testing documentation
-    ├── doc_test_utils_test.py     # Comprehensive test suite
+    ├── test_doc_test_utils.py     # Comprehensive test suite
     └── test_data/
         └── sample.md              # Sample Markdown for testing
 ```

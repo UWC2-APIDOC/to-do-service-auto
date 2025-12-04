@@ -1,6 +1,6 @@
 ---
 layout: default
-description: This file has intentionally broken YAML frontmatter
+description: This file has intentionally broken YAML front matter
 test:
   testable:
     - GET example
@@ -11,9 +11,9 @@ test:
 # Unclosed mapping
 ---
 
-# Test Document with Broken Frontmatter
+# Test Document with Broken Front matter
 
-This file is used to test error handling when frontmatter is malformed.
+This file is used to test error handling when front matter is malformed.
 
 The YAML above has several syntax errors:
 - Unclosed string

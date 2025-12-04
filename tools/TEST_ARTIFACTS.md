@@ -79,7 +79,7 @@ This document describes all test files created for comprehensive regression test
 ## Automated Test Suites
 
 ### test_doc_test_utils.py (6 tests)
-- Frontmatter parsing (valid, missing, invalid)
+- Front matter parsing (valid, missing, invalid)
 - Test config extraction
 - Server/database key generation
 - Console output formatting
@@ -125,7 +125,7 @@ python3 list-linter-exceptions.py tests/test_data/unicode_test.md
 
 ## Files Location
 
-```
+```text
 tests/
 ├── test_doc_test_utils.py
 ├── test_list_linter_exceptions.py

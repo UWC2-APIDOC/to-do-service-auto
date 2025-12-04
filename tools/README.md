@@ -23,26 +23,13 @@ pytest tests/test_list_linter_exceptions.py -v
 pytest tests/ -v  # Run all tests
 ```
 
-## Test Structure
-
-```text
-├── README.md                           # This file
-├── test_doc_test_utils.py              # Tests for doc_test_utils module
-├── test_list_linter_exceptions.py      # Tests for list-linter-exceptions.py
-├── test_data/                          # Sample files for testing
-│   ├── sample.md                       # Sample markdown with frontmatter
-│   ├── linter_exceptions.md            # File with Vale and markdownlint exceptions
-│   └── clean.md                        # Clean file with no exceptions
-└── (future test files)
-```
-
 ## Test Coverage
 
 ### test_doc_test_utils.py
 
 Tests the shared utility functions:
 
-- Frontmatter parsing (valid, missing, invalid YAML)
+- Front matter parsing (valid, missing, invalid YAML)
 - Test config extraction
 - Server/database key generation
 - Console output formatting

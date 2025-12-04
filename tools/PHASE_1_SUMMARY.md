@@ -2,27 +2,28 @@
 
 ## Structure Created
 
-```
+```text
 tools/
 ├── doc_test_utils.py              # Shared utility module (clean, no tests)
 └── tests/
     ├── README.md                  # Testing documentation
     ├── test_doc_test_utils.py     # Comprehensive test suite
     └── test_data/
-        └── sample.md              # Sample markdown for testing
+        └── sample.md              # Sample Markdown for testing
 ```
 
 ## What Was Built
 
 ### 1. Core Utilities (doc_test_utils.py)
 
-**Frontmatter Functions:**
-- `parse_frontmatter(content)` - Extract YAML from markdown
+**Front matter Functions:**
+
+- `parse_frontmatter(content)` - Extract YAML from Markdown
 - `get_test_config(metadata)` - Get test configuration
 - `get_server_database_key(metadata)` - Get server/db tuple for grouping
 
 **File Operations:**
-- `read_markdown_file(filepath)` - Read markdown with error handling
+- `read_markdown_file(filepath)` - Read Markdown with error handling
 
 **Unified Logging:**
 - `log(message, level, file_path, line, use_actions, action_level)` - Console + GitHub Actions annotations
@@ -34,7 +35,8 @@ tools/
 ### 2. Test Suite (tests/test_doc_test_utils.py)
 
 **Test Coverage:**
-- Frontmatter parsing (valid, missing, invalid YAML)
+
+- Front matter parsing (valid, missing, invalid YAML)
 - Test config extraction
 - Server/database key generation
 - Console output formatting
@@ -42,7 +44,7 @@ tools/
 - File reading with error handling
 
 **Running Tests:**
-```bash
+
 # Direct execution
 python3 tests/test_doc_test_utils.py
 
@@ -54,7 +56,7 @@ pytest tests/ -v
 ```
 
 **Test Output:**
-```
+```text
 ======================================================================
  RUNNING ALL TESTS FOR doc_test_utils.py
 ======================================================================

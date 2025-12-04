@@ -15,9 +15,9 @@ from pathlib import Path
 from typing import Optional, Dict, Tuple, Any
 
 
-def parse_frontmatter(content: str) -> Optional[Dict[str, Any]]:
+def parse_front_matter(content: str) -> Optional[Dict[str, Any]]:
     """
-    Extract and parse YAML frontmatter from markdown content.
+    Extract and parse YAML front matter from markdown content.
     
     Args:
         content: Full markdown file content as string
@@ -27,11 +27,11 @@ def parse_frontmatter(content: str) -> Optional[Dict[str, Any]]:
         
     Example:
         >>> content = "---\\nlayout: default\\n---\\n# Heading"
-        >>> metadata = parse_frontmatter(content)
+        >>> metadata = parse_front_matter(content)
         >>> metadata['layout']
         'default'
     """
-    # Match frontmatter between --- delimiters at start of file
+    # Match front matter between --- delimiters at start of file
     fm_match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
     if not fm_match:
         return None
@@ -70,7 +70,7 @@ def read_markdown_file(filepath: Path) -> Optional[str]:
 
 def get_test_config(metadata: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Extract test configuration from frontmatter metadata.
+    Extract test configuration from front matter metadata.
     
     Args:
         metadata: Parsed frontmatter dictionary
@@ -92,7 +92,7 @@ def get_server_database_key(metadata: Dict[str, Any]) -> Tuple[Optional[str], Op
     Extract server and database configuration for grouping test files.
     
     Args:
-        metadata: Parsed frontmatter dictionary
+        metadata: Parsed front matter dictionary
         
     Returns:
         Tuple of (test_apps, server_url, local_database)
@@ -222,4 +222,3 @@ def log(message: str,
     
     parts.append(f"::{message}")
     print("".join(parts))
-# End of tools/doc_test_utils.py

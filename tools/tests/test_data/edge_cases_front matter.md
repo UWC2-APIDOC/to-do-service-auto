@@ -1,7 +1,7 @@
 ---
 layout: default
-# This frontmatter has edge cases
-description: "Test file with edge cases in frontmatter"
+# This front matter has edge cases
+description: "Test file with edge cases in front matter"
 empty_field:
 null_field: null
 number_field: 42
@@ -16,7 +16,7 @@ special_chars: "Value with 'quotes' and \"double quotes\""
 multiline: |
   This is a
   multiline string
-  in the frontmatter
+  in the front matter
 test:
   testable: []  # Empty array
   server_url: ""  # Empty string
@@ -24,7 +24,7 @@ test:
 
 # Edge Cases Document
 
-This file tests edge cases in frontmatter parsing:
+This file tests edge cases in front matter parsing:
 
 - Empty fields
 - Null values

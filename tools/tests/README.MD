@@ -1,3 +1,4 @@
+<!-- vale off -->
 # Phase 1: Shared utilities with test suite
 
 ## Structure created
@@ -85,3 +86,102 @@ Migrate existing scripts to use shared utilities:
 1. `list-linter-exceptions.py` - Replace `annotate()` with `log()`
 2. `markdown-survey.py` - Use shared file reading and logging
 3. `test-api-docs.py` - Import  front matter and logging functions
+
+## Test Suites
+
+### test_doc_test_utils.py
+
+Tests for shared utility functions.
+
+**Coverage:**
+
+- Front matter parsing (valid, missing, invalid YAML)
+- Test config extraction
+- Server/database key generation
+- Console output formatting
+- GitHub Actions annotation filtering
+- File reading with error handling
+
+**Tests:** 6 | **Status:** ✓ All passing
+
+---
+
+### test_list_linter_exception.py
+
+Tests for list-linter-exceptions.py script.
+
+**Coverage:**
+
+- Vale exception parsing (single, multiple, none)
+- markdownlint exception parsing (single, multiple, none)
+- Mixed exceptions
+- Malformed tag rejection
+- Empty file handling
+- Line number accuracy
+- Real test data file usage
+
+**Tests:** 7 | **Status:** ✓ All passing
+
+---
+
+### test_markdown_survey.py
+
+Tests for markdown-survey.py script.
+
+**Coverage:**
+
+- Pattern counting (headings, lists, code blocks, links, images)
+- Statistics calculation
+- Text-only and formatted output
+- File reading error handling
+- Empty file handling
+- Unicode content handling
+- CLI argument processing
+
+**Tests:** 13 | **Status:** ✓ All passing
+
+---
+
+### test_test_api_docs.py
+
+Tests for test-api-docs.py script.
+
+**Coverage:**
+
+- Testable entry parsing
+- Curl command extraction
+- JSON response extraction
+- JSON comparison logic
+- Front matter schema validation
+- Example execution flow
+- Error handling
+
+**Tests:** 8 | **Status:** ✓ All passing
+
+---
+
+### test_get_test_configs.py
+
+Tests for get-test-configs.py utility.
+
+**Coverage:**
+
+- File grouping by identical test configurations
+- Different configurations (separate groups)
+- Mixed configurations
+- Skipping files without front matter
+- Skipping files with incomplete config
+- Skipping files without test section
+- JSON output format
+- Shell output format
+- Empty file list handling
+
+**Tests:** 9 | **Status:** ✓ All passing
+
+---
+
+## Total Test Coverage
+
+**Test Suites:** 5
+**Total Tests:** 43
+**Status:** ✓ All passing

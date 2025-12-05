@@ -1,3 +1,4 @@
+<!-- vale off -->
 # Fail Data Files
 
 This directory contains test files that should **fail** or return **None/empty results** when processed.
@@ -87,6 +88,49 @@ These files are used to verify error handling and edge case behavior.
 
 ---
 
+### incomplete_test_config.md
+
+**Purpose:** Test handling of incomplete test configurations
+
+**Contains:**
+
+- Valid YAML front matter
+- Test section present
+- Missing required field: `local_database`
+- Has `test_apps` and `server_url` but incomplete
+
+**Expected Behavior:**
+
+- `parse_front_matter()` should succeed
+- `get_server_database_key()` returns tuple with None for missing field
+- `get-test-configs.py` should skip this file with warning
+- Should not crash or cause errors
+
+**Test Verification:** ✓ Skipped with appropriate warning
+
+---
+
+### no_test_config.md
+
+**Purpose:** Test handling of files without test configuration
+
+**Contains:**
+
+- Valid YAML front matter
+- Other fields (layout, title, description)
+- NO test section at all
+
+**Expected Behavior:**
+
+- `parse_front_matter()` should succeed
+- `get_test_config()` returns empty dict `{}`
+- `get-test-configs.py` should skip this file with notice
+- Should not be grouped with testable files
+
+**Test Verification:** ✓ Skipped correctly
+
+---
+
 ## Usage in Tests
 
 These files are used to verify that the tools handle errors gracefully:
@@ -117,7 +161,7 @@ assert len(exceptions['markdownlint']) == 1
 
 **test_data/** contains valid, well-formed files where:
 
-- Tests should **pass** 
+- Tests should **pass**
 - Parsing should **succeed**
 - Data should be **extracted correctly**
 

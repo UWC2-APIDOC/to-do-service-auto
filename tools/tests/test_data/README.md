@@ -1,3 +1,4 @@
+<!-- vale off -->
 # Test Data Files
 
 This directory contains **valid, well-formed** test files used by the test suites.
@@ -84,11 +85,71 @@ Contains valid markdown with:
 
 **Used by:** `test_list_linter_exceptions.py`
 
-**Expected:** 
+**Expected:**
 
 - UTF-8 encoding handled correctly
 - Line numbers accurate with multi-byte characters
 - 1 Vale + 1 markdownlint exception detected
+
+---
+
+### api_doc_config_a.md
+
+**Purpose:** Test file grouping by configuration (Configuration A)
+
+Contains valid markdown with:
+
+- Valid YAML front matter
+- Test configuration with test_apps, server_url, local_database
+- Configuration A: localhost:3000, /api/users.json
+
+**Used by:** `test_get_test_configs.py`
+**Expected:** Groups with other files having identical config
+
+---
+
+### api_doc_config_b.md
+
+**Purpose:** Test file grouping by configuration (Configuration B)
+
+Contains valid markdown with:
+
+- Valid YAML front matter
+- Test configuration with test_apps, server_url, local_database
+- Configuration B: localhost:4000, /api/tasks.json (different from A)
+
+**Used by:** `test_get_test_configs.py`
+**Expected:** Forms separate group from config A
+
+---
+
+### api_doc_same_config_1.md
+
+**Purpose:** Test file grouping - first file with shared config
+
+Contains valid markdown with:
+
+- Valid YAML front matter
+- Test configuration matching api_doc_same_config_2.md
+- Configuration: localhost:3000, /api/test.json
+
+**Used by:** `test_get_test_configs.py`
+**Expected:** Groups together with api_doc_same_config_2.md
+
+---
+
+### api_doc_same_config_2.md
+
+**Purpose:** Test file grouping - second file with shared config
+
+Contains valid markdown with:
+
+- Valid YAML front matter
+- Test configuration matching api_doc_same_config_1.md
+- Configuration: localhost:3000, /api/test.json
+
+**Used by:** `test_get_test_configs.py`
+**Expected:** Groups together with api_doc_same_config_1.md
 
 ---
 

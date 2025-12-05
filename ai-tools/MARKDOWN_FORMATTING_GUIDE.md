@@ -1,4 +1,5 @@
 <!-- vale off -->
+<!-- markdownlint-disable -->
 # Markdown and text formatting guide
 
 This guide compiles formatting standards and best practices observed across documentation projects.
@@ -634,7 +635,7 @@ Links to additional information.
 
 ### Timestamps
 
-**When documenting time-based content (like video transcripts), use [MM:SS] format:**
+**When documenting time-based content (like video transcripts), use `[MM:SS]` format:**
 
 ```markdown
 ## Section name

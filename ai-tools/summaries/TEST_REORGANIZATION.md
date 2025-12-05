@@ -1,3 +1,4 @@
+<!-- vale off -->
 # Test File Reorganization Complete
 
 ## New Structure
@@ -27,10 +28,11 @@ tests/
 ## File Classification
 
 ### test_data/ (5 files)
+
 **Purpose:** Valid, well-formed files where tests should **succeed**
 
 | File | Contains | Expected Result |
-|------|----------|-----------------|
+| ------ | ---------- | ----------------- |
 | sample.md | Valid frontmatter, API examples | Parses successfully |
 | clean.md | Valid markdown, no exceptions | 0 exceptions found |
 | linter_exceptions.md | 3 Vale + 3 markdownlint (valid) | 6 exceptions detected |
@@ -38,10 +40,11 @@ tests/
 | unicode_test.md | Unicode + exceptions | 2 exceptions detected |
 
 ### fail_data/ (4 files)
+
 **Purpose:** Invalid/malformed files where tests should **fail gracefully**
 
 | File | Contains | Expected Result |
-|------|----------|-----------------|
+| ------ | ---------- | ----------------- |
 | broken_frontmatter.md | Invalid YAML syntax | Returns None |
 | no_frontmatter.md | No frontmatter delimiters | Returns None |
 | malformed_exceptions.md | Invalid exception tags | Rejects invalid, finds 2 valid |
@@ -78,10 +81,12 @@ All tests still passing after reorganization:
 ## Documentation
 
 Each directory now has a comprehensive README:
+
 - `test_data/README.md` - Documents all valid test files
 - `fail_data/README.md` - Documents all error/edge case files
 
 Both READMEs include:
+
 - Purpose of each file
 - What it contains
 - Expected behavior

@@ -1,3 +1,4 @@
+<!-- vale off -->
 # Phase 1 Complete: Shared Utilities with Test Suite
 
 ## Structure Created
@@ -23,14 +24,16 @@ tools/
 - `get_server_database_key(metadata)` - Get server/db tuple for grouping
 
 **File Operations:**
+
 - `read_markdown_file(filepath)` - Read Markdown with error handling
 
 **Unified Logging:**
+
 - `log(message, level, file_path, line, use_actions, action_level)` - Console + GitHub Actions annotations
-  - Levels: `info`, `notice`, `warning`, `error`, `success`
-  - Text-only labels (INFO:, WARNING:, ERROR:)
-  - Annotation filtering: `all`, `warning`, `error`
-  - `info`/`success` never annotate (console only)
+    - Levels: `info`, `notice`, `warning`, `error`, `success`
+    - Text-only labels (INFO:, WARNING:, ERROR:)
+    - Annotation filtering: `all`, `warning`, `error`
+    - `info`/`success` never annotate (console only)
 
 ### 2. Test Suite (tests/test_doc_test_utils.py)
 
@@ -45,6 +48,7 @@ tools/
 
 **Running Tests:**
 
+```bash
 # Direct execution
 python3 tests/test_doc_test_utils.py
 
@@ -56,6 +60,7 @@ pytest tests/ -v
 ```
 
 **Test Output:**
+
 ```text
 ======================================================================
  RUNNING ALL TESTS FOR doc_test_utils.py
@@ -74,13 +79,14 @@ TEST SUMMARY: 6 passed, 0 failed
 ## Next Steps: Phase 2
 
 Migrate existing scripts to use shared utilities:
+
 1. `list-linter-exceptions.py` - Replace `annotate()` with `log()`
 2. `markdown-survey.py` - Use shared file reading and logging
 3. `test-api-docs.py` - Import frontmatter and logging functions
 
 ## Files Ready for Use
 
-- [doc_test_utils.py](computer:///mnt/user-data/outputs/doc_test_utils.py) - Shared utilities
-- [test_doc_test_utils.py](computer:///mnt/user-data/outputs/tests/test_doc_test_utils.py) - Test suite
-- [tests/README.md](computer:///mnt/user-data/outputs/tests/README.md) - Testing guide
-- [sample.md](computer:///mnt/user-data/outputs/tests/test_data/sample.md) - Test data
+- [doc_test_utils.py](../../tools/doc_test_utils.py) - Shared utilities
+- [test_doc_test_utils.py](../../tools/tests/test_doc_test_utils.py) - Test suite
+- [tests/README.md](../../tools/tests/README.md) - Testing guide
+- [sample.md](../../tools/tests/test_data/sample.md) - Test data

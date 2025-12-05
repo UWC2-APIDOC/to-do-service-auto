@@ -36,6 +36,7 @@ jobs:
           changed_files=${{ steps.get-changed-files-list.outputs.all_changed_files }}
           IFS=',' read -ra files_array <<< "$changed_files"
           for file in "${files_array[@]}"; do
+            echo "**Running list-linter-exceptions.py on: $file"
             python3 tools/list-linter-exceptions.py "$file" --action
           done
 

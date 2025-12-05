@@ -3,101 +3,56 @@
 Test API documentation code examples against a running json-server instance.
 
 Usage:
-    python test-api-docs.py <markdown_file> [--action] [--annotations LEVEL] [--schema SCHEMA_FILE]
+    test-api-docs.py <markdown_file> [--action [LEVEL]] [--schema SCHEMA_FILE]
     
 Arguments:
     markdown_file: Path to the markdown documentation file to test
     --action: Optional flag to output GitHub Actions annotations
-    --annotations: Filter annotations by level (error, warning, all). Default: error
-    --schema: Path to JSON schema file for frontmatter validation. Default: .github/schemas/front-matter-schema.json
+              Optional LEVEL: all, warning (default), error
+    --schema: Path to JSON schema file for front matter validation
+              Default: .github/schemas/front-matter-schema.json
     
 Examples:
-    python test-api-docs.py docs/api/users-get-all-users.md
-    python test-api-docs.py docs/api/users-get-all-users.md --action
-    python test-api-docs.py docs/api/users-get-all-users.md --action --annotations all
-    python test-api-docs.py docs/api/users-get-all-users.md --action --annotations warning
+    test-api-docs.py docs/api/users-get-all-users.md
+    test-api-docs.py --action docs/api/users-get-all-users.md
+    test-api-docs.py --action all docs/api/users-get-all-users.md
+    test-api-docs.py --action error docs/api/users-get-all-users.md
 """
 
-import yaml
 import re
 import subprocess
 import json
 import sys
 import argparse
-import os
 from pathlib import Path
+
+from doc_test_utils import read_markdown_file, parse_front_matter, log
 
 try:
     import jsonschema
-    from jsonschema import validate, ValidationError, Draft7Validator
+    from jsonschema import Draft7Validator
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
     JSONSCHEMA_AVAILABLE = False
 
 
-def log(message, level="info", file_path=None, use_actions=False, annotation_filter="error", annotation_text=None):
+def validate_frontmatter(metadata, schema_path, file_path, use_actions, action_level):
     """
-    Print a message to console and optionally as GitHub Actions annotation.
+    Validate front matter against JSON schema.
     
     Args:
-        message: The message to log
-        level: One of 'info', 'warning', 'error', 'success'
-        file_path: Optional file path for GitHub Actions annotations
+        metadata: Parsed front matter dictionary
+        schema_path: Path to JSON schema file
+        file_path: Path to the markdown file being tested
         use_actions: Whether to output GitHub Actions annotations
-        annotation_filter: Filter for annotations ('error', 'warning', 'all')
-        annotation_text: Optional additional text for the annotations only
-    """
-    icons = {
-        'info': 'ℹ️ ',
-        'warning': '⚠️ ',
-        'error': '❌',
-        'success': '✓'
-    }
-    
-    icon = icons.get(level, '')
-    console_msg = f"{icon} {message}" if icon else message
-    print(console_msg)
-    
-    if use_actions and level in ['warning', 'error']:
-        # Determine if this annotation should be output based on filter
-        should_annotate = False
-        if annotation_filter == 'all':
-            should_annotate = True
-        elif annotation_filter == 'warning' and level in ['warning', 'error']:
-            should_annotate = True
-        elif annotation_filter == 'error' and level == 'error':
-            should_annotate = True
+        action_level: Annotation level filter (all, warning, error)
         
-        if should_annotate:
-            action_level = 'error' if level == 'error' else 'warning'
-            if file_path:
-                print(f"::{action_level} file={file_path}::{message}::{annotation_text or ''}")
-            else:
-                print(f"::{action_level}::{message}::{annotation_text or ''}")
-
-
-def parse_frontmatter(content):
-    """Extract and parse YAML frontmatter from markdown content."""
-    fm_match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
-    if not fm_match:
-        return None
-    
-    try:
-        return yaml.safe_load(fm_match.group(1))
-    except yaml.YAMLError:
-        return None
-
-
-def validate_frontmatter(metadata, schema_path, file_path, use_actions, annotation_filter):
-    """
-    Validate frontmatter against JSON schema.
-    
     Returns:
         tuple: (is_valid, has_warnings, error_messages, warning_messages)
     """
     if not JSONSCHEMA_AVAILABLE:
-        log("jsonschema library not installed. Run: pip install jsonschema", "warning", 
-            file_path, use_actions, annotation_filter)
+        log("jsonschema library not installed. Run: pip install jsonschema", 
+            "warning", file_path, None, use_actions, action_level)
         return True, False, [], []
     
     # Load schema
@@ -105,12 +60,12 @@ def validate_frontmatter(metadata, schema_path, file_path, use_actions, annotati
         with open(schema_path, 'r') as f:
             schema = json.load(f)
     except FileNotFoundError:
-        log(f"Schema file not found: {schema_path}", "warning", 
-            file_path, use_actions, annotation_filter)
+        log(f"Schema file not found: {schema_path}", 
+            "warning", file_path, None, use_actions, action_level)
         return True, False, [], []
     except json.JSONDecodeError as e:
-        log(f"Invalid JSON schema: {str(e)}", "warning", 
-            file_path, use_actions, annotation_filter)
+        log(f"Invalid JSON schema: {str(e)}", 
+            "warning", file_path, None, use_actions, action_level)
         return True, False, [], []
     
     validator = Draft7Validator(schema)
@@ -154,18 +109,18 @@ def validate_frontmatter(metadata, schema_path, file_path, use_actions, annotati
     
     # Report errors
     if errors:
-        log("Frontmatter validation errors found:", "error", file_path, use_actions, annotation_filter)
+        log("Front matter validation errors found:", "error", file_path, None, use_actions, action_level)
         for error_msg in errors:
-            log(f"  - {error_msg}", "error", file_path, use_actions, annotation_filter)
+            log(f"  - {error_msg}", "error", file_path, None, use_actions, action_level)
     
     # Report warnings
     if warnings:
-        log("Frontmatter validation warnings:", "warning", file_path, use_actions, annotation_filter)
+        log("Front matter validation warnings:", "warning", file_path, None, use_actions, action_level)
         for warning_msg in warnings:
-            log(f"  - {warning_msg}", "warning", file_path, use_actions, annotation_filter)
+            log(f"  - {warning_msg}", "warning", file_path, None, use_actions, action_level)
     
     if not errors and not warnings:
-        log("Frontmatter validation passed", "success")
+        log("Front matter validation passed", "success")
     
     return len(errors) == 0, len(warnings) > 0, errors, warnings
 
@@ -175,10 +130,20 @@ def parse_testable_entry(entry):
     Parse a testable entry into example name and expected status codes.
     
     Format: "example name / status,codes"
+    
+    Args:
+        entry: Testable entry string from front matter
+        
+    Returns:
+        tuple: (example_name, expected_codes)
+        
     Examples:
-        "GET example" -> ("GET example", [200])
-        "POST example / 201" -> ("POST example", [201])
-        "PUT example / 200,204" -> ("PUT example", [200, 204])
+        >>> parse_testable_entry("GET example")
+        ('GET example', [200])
+        >>> parse_testable_entry("POST example / 201")
+        ('POST example', [201])
+        >>> parse_testable_entry("PUT example / 200,204")
+        ('PUT example', [200, 204])
     """
     parts = entry.split('/')
     example_name = parts[0].strip()
@@ -192,146 +157,247 @@ def parse_testable_entry(entry):
 
 
 def extract_curl_command(content, example_name):
-    """Extract curl command from the specified example section."""
-    # Escape the example name but allow backticks around any part of it
-    # This matches headings like "### `GET` example request" when example_name is "GET example"
+    """
+    Extract curl command from the specified example section.
+    
+    Args:
+        content: Full markdown file content
+        example_name: Name of the example to find
+        
+    Returns:
+        str: The curl command, or None if not found
+    """
+    # Escape the example name but allow backticks around words
+    # Pattern like "GET example" should match "`GET` example", "GET `example`", or "`GET` `example`"
     escaped_name = re.escape(example_name)
-    # Replace spaces in the pattern with \s*`?\s* to allow backticks between words
-    pattern_parts = escaped_name.split(r'\ ')  # Split on escaped spaces
-    flexible_pattern = r'\s*`?\s*'.join(pattern_parts)
+    # Split on spaces and wrap each word to allow optional backticks
+    words = escaped_name.split(r'\ ')
+    flexible_words = [rf'`?{word}`?' for word in words]
+    flexible_pattern = r'\s+'.join(flexible_words)
     
-    example_pattern = rf'###\s+`?{flexible_pattern}`?\s+.*?request.*?\n```bash\n(.*?)```'
-    example_match = re.search(example_pattern, content, re.IGNORECASE | re.DOTALL)
+    # Look for heading with "request" (h2 or h3)
+    heading_pattern = rf'^##\#?\s+{flexible_pattern}\s+request'
     
-    if not example_match:
-        return None
+    lines = content.split('\n')
+    in_example = False
+    in_code_block = False
+    curl_command = []
     
-    return example_match.group(1).strip()
+    for i, line in enumerate(lines):
+        # Check if we found the heading
+        if re.search(heading_pattern, line, re.IGNORECASE):
+            in_example = True
+            continue
+        
+        # If we're in the example section
+        if in_example:
+            # Look for bash code block
+            if line.strip().startswith('```bash') or line.strip().startswith('```sh'):
+                in_code_block = True
+                continue
+            
+            # End of code block
+            if in_code_block and line.strip() == '```':
+                break
+            
+            # Collect curl command lines
+            if in_code_block:
+                curl_command.append(line)
+            
+            # Stop if we hit another heading
+            if line.startswith('#'):
+                break
+    
+    if curl_command:
+        return '\n'.join(curl_command).strip()
+    
+    return None
 
 
 def extract_expected_response(content, example_name):
-    """Extract expected JSON response from the specified example section."""
-    # Same flexible pattern as extract_curl_command
-    escaped_name = re.escape(example_name)
-    pattern_parts = escaped_name.split(r'\ ')
-    flexible_pattern = r'\s*`?\s*'.join(pattern_parts)
-    
-    response_pattern = rf'###\s+`?{flexible_pattern}`?\s+.*?response.*?\n```json\n(.*?)```'
-    response_match = re.search(response_pattern, content, re.IGNORECASE | re.DOTALL)
-    
-    if not response_match:
-        return None
-    
-    try:
-        return json.loads(response_match.group(1).strip())
-    except json.JSONDecodeError:
-        return None
-
-
-def compare_json_objects(actual, expected, path=""):
     """
-    Compare two JSON objects and return detailed differences.
+    Extract expected JSON response from the specified example section.
     
+    Args:
+        content: Full markdown file content
+        example_name: Name of the example to find
+        
     Returns:
-        tuple: (are_equal, list_of_differences)
+        dict: Parsed JSON response, or None if not found
     """
-    differences = []
+    # Similar flexible pattern as curl extraction
+    escaped_name = re.escape(example_name)
+    words = escaped_name.split(r'\ ')
+    flexible_words = [rf'`?{word}`?' for word in words]
+    flexible_pattern = r'\s+'.join(flexible_words)
     
-    # Type mismatch
-    if type(actual) != type(expected):
-        differences.append(f"{path}: Type mismatch - expected {type(expected).__name__}, got {type(actual).__name__}")
-        return False, differences
+    # Look for heading with "response" (h2 or h3)
+    heading_pattern = rf'^##\#?\s+{flexible_pattern}\s+response'
     
-    # Compare dictionaries
-    if isinstance(actual, dict):
-        # Check for missing keys in actual
-        missing_keys = set(expected.keys()) - set(actual.keys())
-        for key in missing_keys:
-            differences.append(f"{path}.{key}: Missing in actual response")
+    lines = content.split('\n')
+    in_example = False
+    in_code_block = False
+    json_lines = []
+    
+    for i, line in enumerate(lines):
+        # Check if we found the heading
+        if re.search(heading_pattern, line, re.IGNORECASE):
+            in_example = True
+            continue
         
-        # Check for extra keys in actual
-        extra_keys = set(actual.keys()) - set(expected.keys())
-        for key in extra_keys:
-            differences.append(f"{path}.{key}: Extra key in actual response (not in documentation)")
-        
-        # Compare common keys
-        for key in set(actual.keys()) & set(expected.keys()):
-            new_path = f"{path}.{key}" if path else key
-            equal, diffs = compare_json_objects(actual[key], expected[key], new_path)
-            differences.extend(diffs)
+        # If we're in the example section
+        if in_example:
+            # Look for json code block
+            if line.strip().startswith('```json'):
+                in_code_block = True
+                continue
+            
+            # End of code block
+            if in_code_block and line.strip() == '```':
+                break
+            
+            # Collect JSON lines
+            if in_code_block:
+                json_lines.append(line)
+            
+            # Stop if we hit another heading
+            if line.startswith('#'):
+                break
     
-    # Compare lists
-    elif isinstance(actual, list):
-        if len(actual) != len(expected):
-            differences.append(f"{path}: Array length mismatch - expected {len(expected)}, got {len(actual)}")
-        
-        for i, (actual_item, expected_item) in enumerate(zip(actual, expected)):
-            new_path = f"{path}[{i}]"
-            equal, diffs = compare_json_objects(actual_item, expected_item, new_path)
-            differences.extend(diffs)
+    if json_lines:
+        try:
+            return json.loads('\n'.join(json_lines))
+        except json.JSONDecodeError:
+            return None
     
-    # Compare primitives
-    else:
-        if actual != expected:
-            differences.append(f"{path}: Value mismatch - expected {repr(expected)}, got {repr(actual)}")
-    
-    return len(differences) == 0, differences
+    return None
 
-def execute_curl(curl_cmd, timeout=10):
+
+def execute_curl(curl_command):
     """
-    Execute a curl command and return status code, headers, and body.
+    Execute a curl command and return the response.
     
+    Args:
+        curl_command: The curl command to execute
+        
     Returns:
         tuple: (status_code, headers, body) or (None, None, error_message)
     """
-    # Add -i flag if not present to get headers
-    if '-i' not in curl_cmd and '--include' not in curl_cmd:
-        curl_cmd = curl_cmd.replace('curl', 'curl -i', 1)
-    
     try:
+        # Run curl with -i to get headers
         result = subprocess.run(
-            curl_cmd,
-            shell=True,
+            ['bash', '-c', curl_command],
             capture_output=True,
             text=True,
-            timeout=timeout
+            timeout=10
         )
         
         if result.returncode != 0:
-            return None, None, f"  -- Curl command failed: {result.stderr}"
+            return None, None, result.stderr or "Command failed"
+        
+        # Parse response
+        output = result.stdout
         
         # Split headers and body
-        output = result.stdout
-        if '\r\n\r\n' in output:
-            headers, body = output.split('\r\n\r\n', 1)
-        elif '\n\n' in output:
-            headers, body = output.split('\n\n', 1)
-        else:
-            return None, None, "Could not parse HTTP response (no header/body separator found)"
+        parts = output.split('\n\n', 1)
+        if len(parts) < 2:
+            # Try with \r\n\r\n
+            parts = output.split('\r\n\r\n', 1)
         
-        # Extract status code
-        status_match = re.search(r'HTTP/[\d.]+\s+(\d+)', headers)
+        if len(parts) < 2:
+            return None, None, "Could not parse response"
+        
+        headers_text = parts[0]
+        body = parts[1] if len(parts) > 1 else ""
+        
+        # Extract status code from first line
+        status_line = headers_text.split('\n')[0]
+        status_match = re.search(r'HTTP/[\d.]+ (\d+)', status_line)
+        
         if not status_match:
-            return None, None, "Could not find HTTP status code in response"
+            return None, None, "Could not parse status code"
         
         status_code = int(status_match.group(1))
         
-        return status_code, headers, body
+        return status_code, headers_text, body
         
     except subprocess.TimeoutExpired:
         return None, None, "Request timed out"
     except Exception as e:
-        return None, None, f"Unexpected error: {str(e)}"
+        return None, None, str(e)
 
 
-def test_example(content, example_name, expected_codes, file_path, use_actions, annotation_filter):
+def compare_json_objects(actual, expected, path=""):
+    """
+    Compare two JSON objects and return differences.
+    
+    Args:
+        actual: Actual JSON object
+        expected: Expected JSON object
+        path: Current path in the object (for error messages)
+        
+    Returns:
+        tuple: (are_equal, differences_list)
+    """
+    differences = []
+    
+    # Check types match
+    if type(actual) != type(expected):
+        differences.append(f"{path}: Type mismatch - expected {type(expected).__name__}, got {type(actual).__name__}")
+        return False, differences
+    
+    # Compare based on type
+    if isinstance(expected, dict):
+        # Check all expected keys exist
+        for key in expected:
+            if key not in actual:
+                differences.append(f"{path}.{key}: Missing in actual response")
+            else:
+                are_equal, subdiffs = compare_json_objects(
+                    actual[key], expected[key], f"{path}.{key}" if path else key
+                )
+                differences.extend(subdiffs)
+        
+        # Check for extra keys in actual
+        for key in actual:
+            if key not in expected:
+                differences.append(f"{path}.{key}: Extra key in actual response (not in documentation)")
+    
+    elif isinstance(expected, list):
+        if len(actual) != len(expected):
+            differences.append(f"{path}: Array length mismatch - expected {len(expected)}, got {len(actual)}")
+        else:
+            for i, (actual_item, expected_item) in enumerate(zip(actual, expected)):
+                are_equal, subdiffs = compare_json_objects(
+                    actual_item, expected_item, f"{path}[{i}]"
+                )
+                differences.extend(subdiffs)
+    
+    else:
+        # Primitive types - direct comparison
+        if actual != expected:
+            differences.append(f"{path}: Value mismatch - expected {expected}, got {actual}")
+    
+    return len(differences) == 0, differences
+
+
+def test_example(content, example_name, expected_codes, file_path, use_actions, action_level):
     """
     Test a single example from the documentation.
     
+    Args:
+        content: Full markdown file content
+        example_name: Name of the example to test
+        expected_codes: List of acceptable HTTP status codes
+        file_path: Path to the markdown file
+        use_actions: Whether to output GitHub Actions annotations
+        action_level: Annotation level filter
+        
     Returns:
         bool: True if test passed, False otherwise
     """
-    see_also_the_log =  " See the \"Test changed documentation files\" entry in the log for more info."
+    see_also_the_log = " See the 'Test changed documentation files' entry in the log for more info."
+    
     log(f"Testing: {example_name}")
     log(f"  -- Expected status: {', '.join(map(str, expected_codes))}")
     
@@ -339,7 +405,7 @@ def test_example(content, example_name, expected_codes, file_path, use_actions, 
     curl_cmd = extract_curl_command(content, example_name)
     if not curl_cmd:
         log(f"  -- Could not find example '{example_name}' or it is not formatted correctly", 
-            "warning", file_path, use_actions, annotation_filter, see_also_the_log)
+            "warning", file_path, None, use_actions, action_level)
         log(f"  -- Expected format: '### {example_name} request' section with bash code block")
         log("   -- For help, visit: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Example-Format")
         return False
@@ -350,7 +416,8 @@ def test_example(content, example_name, expected_codes, file_path, use_actions, 
     status_code, headers, body = execute_curl(curl_cmd)
     
     if status_code is None:
-        log(f"  -- Example '{example_name}' failed: {body}", "error", file_path, use_actions, annotation_filter)
+        log(f"  -- Example '{example_name}' failed: {body}", 
+            "error", file_path, None, use_actions, action_level)
         return False
     
     log(f"  -- Status: {status_code}")
@@ -359,7 +426,7 @@ def test_example(content, example_name, expected_codes, file_path, use_actions, 
     if status_code not in expected_codes:
         expected_str = ' or '.join(map(str, expected_codes))
         log(f"Example '{example_name}' failed: Expected HTTP {expected_str}, got {status_code}.", 
-            "error", file_path, use_actions, annotation_filter, see_also_the_log)
+            "error", file_path, None, use_actions, action_level)
         return False
     
     log(f"  HTTP {status_code} (success)", "success")
@@ -370,17 +437,17 @@ def test_example(content, example_name, expected_codes, file_path, use_actions, 
         log("  Valid JSON response received", "success")
     except json.JSONDecodeError:
         log(f"  Example '{example_name}' failed: Response is not valid JSON", 
-            "error", file_path, use_actions, annotation_filter, see_also_the_log)
-        log(f". Response: {body[:200]}")
+            "error", file_path, None, use_actions, action_level)
+        log(f"  Response: {body[:200]}")
         return False
     
     # Extract expected response
     expected_json = extract_expected_response(content, example_name)
     if expected_json is None:
-        log(f"-- Could not find documented response for '{example_name}' or it is not formatted correctly", 
-            "warning", file_path, use_actions, annotation_filter, see_also_the_log)
-        log(f"-- Expected format: '### {example_name} response' section with json code block")
-        log("   -- For help, visit: Documentation: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Example-Format")
+        log(f"  -- Could not find documented response for '{example_name}' or it is not formatted correctly", 
+            "warning", file_path, None, use_actions, action_level)
+        log(f"  -- Expected format: '### {example_name} response' section with json code block")
+        log("   -- For help, visit: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Example-Format")
         return False
     
     # Compare actual vs expected
@@ -388,11 +455,11 @@ def test_example(content, example_name, expected_codes, file_path, use_actions, 
     
     if are_equal:
         log("  -- Response matches documentation exactly", "success")
-        log(f"  --✓ Example '{example_name}' PASSED", "success")
+        log(f"  -- ✓ Example '{example_name}' PASSED", "success")
         return True
     else:
         log(f"  -- Example '{example_name}' failed: Response does not match documentation", 
-            "error", file_path, use_actions, annotation_filter, see_also_the_log)
+            "error", file_path, None, use_actions, action_level)
         log(f"  -- Differences found ({len(differences)}):")
         for diff in differences[:10]:  # Show first 10 differences
             log(f"    • {diff}")
@@ -401,10 +468,16 @@ def test_example(content, example_name, expected_codes, file_path, use_actions, 
         return False
 
 
-def test_file(file_path, schema_path, use_actions=False, annotation_filter="error"):
+def test_file(file_path, schema_path, use_actions=False, action_level="warning"):
     """
     Test all examples in a documentation file.
     
+    Args:
+        file_path: Path to the markdown file to test
+        schema_path: Path to JSON schema file for validation
+        use_actions: Whether to output GitHub Actions annotations
+        action_level: Annotation level filter (all, warning, error)
+        
     Returns:
         tuple: (total_tests, passed_tests, failed_tests)
     """
@@ -412,46 +485,42 @@ def test_file(file_path, schema_path, use_actions=False, annotation_filter="erro
     log(f"# Testing file: {file_path}")
     log(f"{'#'*60}")
     
-    # Read file content
-    try:
-        with open(file_path, 'r') as f:
-            content = f.read()
-    except FileNotFoundError:
-        log(f"  File not found: {file_path}", "error", file_path, use_actions, annotation_filter)
-        return 0, 0, 0
-    except Exception as e:
-        log(f". Error reading file: {str(e)}", "error", file_path, use_actions, annotation_filter)
+    # Read file content using shared utility
+    content = read_markdown_file(Path(file_path))
+    if content is None:
+        log(f"  File not found or unreadable: {file_path}", 
+            "error", file_path, None, use_actions, action_level)
         return 0, 0, 0
     
-    # Extract and parse frontmatter
-    metadata = parse_frontmatter(content)
+    # Extract and parse front matter
+    metadata = parse_front_matter(content)
     if not metadata:
-        log("No frontmatter found", "error", file_path, use_actions, annotation_filter, see_also_the_log)
-        log("All documentation files must have YAML frontmatter between --- delimiters")
+        log("No front matter found", "error", file_path, None, use_actions, action_level)
+        log("All documentation files must have YAML front matter between --- delimiters")
         log("📖 Documentation: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Frontmatter-Format")
         return 0, 0, 0
     
-    # Validate frontmatter against schema
+    # Validate front matter against schema
     is_valid, has_warnings, errors, warnings = validate_frontmatter(
-        metadata, schema_path, file_path, use_actions, annotation_filter
+        metadata, schema_path, file_path, use_actions, action_level
     )
     
     if not is_valid:
-        log("\n. ❌ Frontmatter validation failed. Fix errors before testing examples.", "error")
+        log("\n  ❌ Front matter validation failed. Fix errors before testing examples.", "error")
         return 0, 0, 0
     
     if has_warnings:
-        log("\n  ⚠️  Frontmatter has warnings but is valid enough to continue", "warning")
+        log("\n  ⚠️  Front matter has warnings but is valid enough to continue", "warning")
     
     # Check if file has testable examples
     test_config = metadata.get('test', {})
     if not test_config:
-        log("  No test configuration found in frontmatter", "info")
+        log("  No test configuration found in front matter", "info")
         return 0, 0, 0
     
     testable = test_config.get('testable', [])
     if not testable:
-        log("  No testable examples marked in frontmatter", "info")
+        log("  No testable examples marked in front matter", "info")
         return 0, 0, 0
     
     log(f"  Testable examples found: {len(testable)}")
@@ -466,7 +535,7 @@ def test_file(file_path, schema_path, use_actions=False, annotation_filter="erro
     for testable_entry in testable:
         example_name, expected_codes = parse_testable_entry(testable_entry)
         
-        if test_example(content, example_name, expected_codes, file_path, use_actions, annotation_filter):
+        if test_example(content, example_name, expected_codes, file_path, use_actions, action_level):
             passed_tests += 1
         else:
             failed_tests += 1
@@ -475,34 +544,58 @@ def test_file(file_path, schema_path, use_actions=False, annotation_filter="erro
 
 
 def main():
+    """Main entry point for the test-api-docs tool."""
     parser = argparse.ArgumentParser(
-        description='Test API documentation code examples against a running json-server instance.'
+        description='Test API documentation code examples against a running json-server instance.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s docs/api.md                    # Normal output
+  %(prog)s --action docs/api.md           # GitHub Actions output (warnings and errors)
+  %(prog)s --action all docs/api.md       # GitHub Actions output (all levels)
+  %(prog)s --action error docs/api.md     # GitHub Actions output (errors only)
+        """
     )
-    parser.add_argument('file', help='Path to the markdown documentation file to test')
-    parser.add_argument('--action', action='store_true', 
-                       help='Output GitHub Actions annotations')
-    parser.add_argument('--annotations', default='error', choices=['error', 'warning', 'all'],
-                       help='Filter annotations by level (default: error)')
-    parser.add_argument('--schema', default='.github/schemas/front-matter-schema.json',
-                       help='Path to JSON schema file for frontmatter validation')
+    
+    parser.add_argument(
+        'file',
+        type=str,
+        help='Path to the markdown documentation file to test'
+    )
+    
+    parser.add_argument(
+        '--action', '-a',
+        type=str,
+        nargs='?',
+        const='warning',
+        default=None,
+        choices=['all', 'warning', 'error'],
+        metavar='LEVEL',
+        help='Output GitHub Actions annotations. Optional LEVEL: all, warning (default), error'
+    )
+    
+    parser.add_argument(
+        '--schema',
+        default='.github/schemas/front-matter-schema.json',
+        help='Path to JSON schema file for front matter validation'
+    )
     
     args = parser.parse_args()
     
     # Check if jsonschema is available
     if not JSONSCHEMA_AVAILABLE:
         print("⚠️  Warning: jsonschema library not installed")
-        print("   Frontmatter validation will be skipped")
+        print("   Front matter validation will be skipped")
         print("   Install with: pip install jsonschema")
         print()
     
-    # Check if schema file exists
-    if not os.path.exists(args.schema):
-        print(f"⚠️  Warning: Schema file not found: {args.schema}")
-        print("   Frontmatter validation will be skipped")
-        print()
-    
     # Test the file
-    total, passed, failed = test_file(args.file, args.schema, args.action, args.annotations)
+    total, passed, failed = test_file(
+        args.file, 
+        args.schema, 
+        args.action is not None, 
+        args.action or 'warning'
+    )
     
     # Print summary
     log(f"TEST SUMMARY: {args.file}")
@@ -510,7 +603,6 @@ def main():
     if passed > 0:
         log(f"    Passed: {passed}", "success")
     if failed > 0:
-        # this is labeled success because it's summary info and not a test result
         log(f"    Failed: {failed}", "success")
     
     # Exit with appropriate code
@@ -520,7 +612,7 @@ def main():
         log("  No tests were run", "warning")
         sys.exit(0)
     else:
-        log("✓   All tests passed!", "success")
+        log("✓ All tests passed!", "success")
         sys.exit(0)
 
 

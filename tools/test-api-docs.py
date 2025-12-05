@@ -27,102 +27,7 @@ import argparse
 from pathlib import Path
 
 from doc_test_utils import read_markdown_file, parse_front_matter, log
-
-try:
-    import jsonschema
-    from jsonschema import Draft7Validator
-    JSONSCHEMA_AVAILABLE = True
-except ImportError:
-    JSONSCHEMA_AVAILABLE = False
-
-
-def validate_frontmatter(metadata, schema_path, file_path, use_actions, action_level):
-    """
-    Validate front matter against JSON schema.
-    
-    Args:
-        metadata: Parsed front matter dictionary
-        schema_path: Path to JSON schema file
-        file_path: Path to the markdown file being tested
-        use_actions: Whether to output GitHub Actions annotations
-        action_level: Annotation level filter (all, warning, error)
-        
-    Returns:
-        tuple: (is_valid, has_warnings, error_messages, warning_messages)
-    """
-    if not JSONSCHEMA_AVAILABLE:
-        log("jsonschema library not installed. Run: pip install jsonschema", 
-            "warning", file_path, None, use_actions, action_level)
-        return True, False, [], []
-    
-    # Load schema
-    try:
-        with open(schema_path, 'r') as f:
-            schema = json.load(f)
-    except FileNotFoundError:
-        log(f"Schema file not found: {schema_path}", 
-            "warning", file_path, None, use_actions, action_level)
-        return True, False, [], []
-    except json.JSONDecodeError as e:
-        log(f"Invalid JSON schema: {str(e)}", 
-            "warning", file_path, None, use_actions, action_level)
-        return True, False, [], []
-    
-    validator = Draft7Validator(schema)
-    errors = []
-    warnings = []
-    
-    # Collect all validation errors
-    for error in validator.iter_errors(metadata):
-        # Determine if this is a required field error (critical) or optional field error (warning)
-        is_required_error = False
-        
-        # Check if error is about a required property
-        if error.validator == 'required':
-            is_required_error = True
-            missing_field = error.message.split("'")[1] if "'" in error.message else "unknown"
-            errors.append(f"Required field missing: {missing_field}")
-        
-        # Check if error is about an enum value for a required field
-        elif error.validator == 'enum' and len(error.absolute_path) > 0:
-            field_name = '.'.join(str(p) for p in error.absolute_path)
-            # Check if this field is in the required list
-            if error.absolute_path[0] in schema.get('required', []):
-                is_required_error = True
-                errors.append(f"Invalid value for required field '{field_name}': {error.message}")
-            else:
-                warnings.append(f"Invalid value for optional field '{field_name}': {error.message}")
-        
-        # Check if error is about type or format for required fields
-        elif error.validator in ['type', 'format', 'pattern', 'minimum', 'maximum', 'minLength', 'maxLength']:
-            field_name = '.'.join(str(p) for p in error.absolute_path)
-            # Check if this field is in the required list
-            if len(error.absolute_path) > 0 and error.absolute_path[0] in schema.get('required', []):
-                is_required_error = True
-                errors.append(f"Invalid format for required field '{field_name}': {error.message}")
-            else:
-                warnings.append(f"Invalid format for optional field '{field_name}': {error.message}")
-        else:
-            # Other errors default to warnings for optional fields
-            field_name = '.'.join(str(p) for p in error.absolute_path) if error.absolute_path else "unknown"
-            warnings.append(f"Validation issue in '{field_name}': {error.message}")
-    
-    # Report errors
-    if errors:
-        log("Front matter validation errors found:", "error", file_path, None, use_actions, action_level)
-        for error_msg in errors:
-            log(f"  - {error_msg}", "error", file_path, None, use_actions, action_level)
-    
-    # Report warnings
-    if warnings:
-        log("Front matter validation warnings:", "warning", file_path, None, use_actions, action_level)
-        for warning_msg in warnings:
-            log(f"  - {warning_msg}", "warning", file_path, None, use_actions, action_level)
-    
-    if not errors and not warnings:
-        log("Front matter validation passed", "success")
-    
-    return len(errors) == 0, len(warnings) > 0, errors, warnings
+from schema_validator import validate_front_matter_schema
 
 
 def parse_testable_entry(entry):
@@ -501,7 +406,7 @@ def test_file(file_path, schema_path, use_actions=False, action_level="warning")
         return 0, 0, 0
     
     # Validate front matter against schema
-    is_valid, has_warnings, errors, warnings = validate_frontmatter(
+    is_valid, has_warnings, errors, warnings = validate_front_matter_schema(
         metadata, schema_path, file_path, use_actions, action_level
     )
     
@@ -582,12 +487,6 @@ Examples:
     
     args = parser.parse_args()
     
-    # Check if jsonschema is available
-    if not JSONSCHEMA_AVAILABLE:
-        print("⚠️  Warning: jsonschema library not installed")
-        print("   Front matter validation will be skipped")
-        print("   Install with: pip install jsonschema")
-        print()
     
     # Test the file
     total, passed, failed = test_file(

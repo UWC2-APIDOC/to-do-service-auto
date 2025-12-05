@@ -39,7 +39,15 @@ parse_testable_entry = test_api_docs.parse_testable_entry
 extract_curl_command = test_api_docs.extract_curl_command
 extract_expected_response = test_api_docs.extract_expected_response
 compare_json_objects = test_api_docs.compare_json_objects
-validate_frontmatter = test_api_docs.validate_frontmatter
+# Import schema validator directly
+import importlib.util
+schema_validator_spec = importlib.util.spec_from_file_location("schema_validator", 
+                                                   Path(__file__).parent.parent / "schema_validator.py")
+if schema_validator_spec and schema_validator_spec.loader:
+    schema_validator = importlib.util.module_from_spec(schema_validator_spec)
+    schema_validator_spec.loader.exec_module(schema_validator)
+    validate_front_matter_schema = schema_validator.validate_front_matter_schema
+    JSONSCHEMA_AVAILABLE = schema_validator.JSONSCHEMA_AVAILABLE
 
 
 def test_parse_testable_entry():
@@ -333,7 +341,7 @@ def test_compare_json_objects_different():
 def test_validate_frontmatter_with_jsonschema():
     """Test front matter validation when jsonschema is available."""
     print("\n" + "="*60)
-    print("TEST: validate_frontmatter() with jsonschema")
+    print("TEST: validate_front_matter_schema() with jsonschema")
     print("="*60)
     
     # Check if jsonschema is available
@@ -360,7 +368,7 @@ def test_validate_frontmatter_with_jsonschema():
             "test_apps": ["json-server@0.17.4"]
         }
     }
-    is_valid, has_warnings, errors, warnings = validate_frontmatter(
+    is_valid, has_warnings, errors, warnings = validate_front_matter_schema(
         metadata, str(schema_path), "test.md", False, "warning"
     )
     assert is_valid, "Should be valid"
@@ -372,7 +380,7 @@ def test_validate_frontmatter_with_jsonschema():
         "layout": "api"
         # Missing 'title'
     }
-    is_valid, has_warnings, errors, warnings = validate_frontmatter(
+    is_valid, has_warnings, errors, warnings = validate_front_matter_schema(
         metadata, str(schema_path), "test.md", False, "warning"
     )
     assert not is_valid, "Should be invalid"
@@ -384,7 +392,7 @@ def test_validate_frontmatter_with_jsonschema():
         "layout": "invalid",  # Not in enum
         "title": "Test"
     }
-    is_valid, has_warnings, errors, warnings = validate_frontmatter(
+    is_valid, has_warnings, errors, warnings = validate_front_matter_schema(
         metadata, str(schema_path), "test.md", False, "warning"
     )
     assert not is_valid, "Should be invalid"
@@ -397,16 +405,16 @@ def test_validate_frontmatter_with_jsonschema():
 def test_validate_frontmatter_without_jsonschema():
     """Test front matter validation gracefully handles missing jsonschema."""
     print("\n" + "="*60)
-    print("TEST: validate_frontmatter() without jsonschema")
+    print("TEST: validate_front_matter_schema() without jsonschema")
     print("="*60)
     
-    # Temporarily mock JSONSCHEMA_AVAILABLE as False
-    original_value = test_api_docs.JSONSCHEMA_AVAILABLE
-    test_api_docs.JSONSCHEMA_AVAILABLE = False
+    # Temporarily mock JSONSCHEMA_AVAILABLE as False in schema_validator
+    original_value = schema_validator.JSONSCHEMA_AVAILABLE
+    schema_validator.JSONSCHEMA_AVAILABLE = False
     
     try:
         metadata = {"layout": "api", "title": "Test"}
-        is_valid, has_warnings, errors, warnings = validate_frontmatter(
+        is_valid, has_warnings, errors, warnings = validate_front_matter_schema(
             metadata, "schema.json", "test.md", False, "warning"
         )
         
@@ -415,9 +423,10 @@ def test_validate_frontmatter_without_jsonschema():
         assert len(errors) == 0, "Should have no errors"
         print("  SUCCESS: Gracefully handles missing jsonschema")
     finally:
-        test_api_docs.JSONSCHEMA_AVAILABLE = original_value
+        schema_validator.JSONSCHEMA_AVAILABLE = original_value
     
     print("  ✓ Graceful degradation test passed")
+
 
 
 def test_real_test_data_files():

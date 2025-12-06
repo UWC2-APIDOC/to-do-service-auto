@@ -1,3 +1,4 @@
+<!-- vale off -->
 # Documentation Testing Suite
 
 This directory contains automated tests for the documentation tooling.

@@ -5,3 +5,9 @@
 # Dependency directories
 node_modules/
 jspm_packages/
+# Python cache and directories
+**/__pycache__/*
+**/.py[cod]
+.env
+.env.*.local
+#

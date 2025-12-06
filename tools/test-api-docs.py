@@ -13,10 +13,10 @@ Arguments:
               Default: .github/schemas/front-matter-schema.json
     
 Examples:
-    test-api-docs.py docs/api/users-get-all-users.md
-    test-api-docs.py --action docs/api/users-get-all-users.md
-    test-api-docs.py --action all docs/api/users-get-all-users.md
-    test-api-docs.py --action error docs/api/users-get-all-users.md
+    test-api-docs.py docs/api/users-get-all-users.md --schema .schemas/front-matter-schema.json
+    test-api-docs.py docs/api/users-get-all-users.md --action --schema .schemas/front-matter-schema.json
+    test-api-docs.py docs/api/users-get-all-users.md --action all --schema .schemas/front-matter-schema.json
+    test-api-docs.py docs/api/users-get-all-users.md --action error --schema .schemas/front-matter-schema.json
 """
 
 import re

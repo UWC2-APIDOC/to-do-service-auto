@@ -42,11 +42,10 @@ jobs:
 
       - name: List linter exceptions
         run: |
-          changed_files=${{ steps.get-changed-files-list.outputs.all_changed_files }}
-          IFS=',' read -ra files_array <<< "$changed_files"
-          for file in "${files_array[@]}"; do
-            python3 tools/list-linter-exceptions.py "$file" --action
-          done
+          changed_files="${{ steps.get-changed-files-list.outputs.all_changed_files }}"
+          # Convert comma-separated to space-separated
+          files_space="${changed_files//,/ }"
+          python3 tools/list-linter-exceptions.py $files_space  --action
 
   markdown-files-lint:
     name: Lint changed markdown files
@@ -58,11 +57,10 @@ jobs:
 
       - name: Count markdown notations
         run: |
-          changed_files=${{ needs.get-changed-files.outputs.changed_files_list }}
-          IFS=',' read -ra files_array <<< "$changed_files"
-          for file in "${files_array[@]}"; do
-            python3 tools/markdown-survey.py "$file" --action
-          done
+          changed_files="${{ needs.get-changed-files.outputs.changed_files_list }}"
+          # Convert comma-separated to space-separated
+          files_space="${changed_files//,/ }"
+          python3 tools/markdown-survey.py $files_space --action
 
       - name: Run MarkdownLint on
         uses: DavidAnson/markdownlint-cli2-action@v21

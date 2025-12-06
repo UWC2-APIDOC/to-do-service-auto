@@ -188,9 +188,6 @@ Missing NO
 <!--vale Style.Rule = NO-->
 No spaces (still valid actually)
 
-<!-- markdownlint-disable -->
-Missing rule number
-
 <!-- markdownlint MD013 -->
 Wrong format
 

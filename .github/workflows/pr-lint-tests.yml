@@ -14,7 +14,7 @@ jobs:
       changed_files_list: ${{ steps.get-changed-files-list.outputs.all_changed_files }}
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Get the list of changed markdown files
         id: get-changed-files-list
         uses: tj-actions/changed-files@v40
@@ -30,6 +30,14 @@ jobs:
           echo "Changed files count: ${{ steps.get-changed-files-list.outputs.all_changed_files_count }}"
           echo "Changed files:"
           echo "${{ steps.get-changed-files-list.outputs.all_changed_files }}" | tr ',' '\n'
+
+      - name: Test filenames
+        env:
+          CHANGED_FILES: ${{ steps.get-changed-files-list.outputs.all_changed_files}}
+        run: |
+          echo "Testing changed files for unsafe filenames..."
+          # read changed files from env variable that is read from within the script
+          python3 tools/test-filenames.py --action
 
       - name: List linter exceptions
         run: |

@@ -3,7 +3,20 @@
 Scan Markdown files for Vale and markdownlint exception tags.
 
 Usage:
-    list-linter-exceptions.py <filename> [--action [LEVEL]]
+    list-linter-exceptions.py <file1> [file2 ...] [--action [LEVEL]]
+
+Examples:
+    # Single file
+    list-linter-exceptions.py README.md
+    
+    # Multiple files
+    list-linter-exceptions.py file1.md file2.md file3.md
+    
+    # With glob expansion (shell expands)
+    list-linter-exceptions.py docs/*.md
+    
+    # GitHub Actions mode
+    list-linter-exceptions.py docs/*.md --action
 
 Note: Does not test front matter sections.
 """
@@ -21,6 +34,12 @@ def list_vale_exceptions(content):
     """
     Scan for Vale and markdownlint exception tags.
     
+    Detects:
+    - Vale specific rules: <!-- vale RuleName = NO -->
+    - Vale global disable: <!-- vale off -->
+    - Markdownlint specific rules: <!-- markdownlint-disable MD### -->
+    - Markdownlint global disable: <!-- markdownlint-disable -->
+    
     Args:
         content: Markdown file content as string
     
@@ -36,30 +55,54 @@ def list_vale_exceptions(content):
     }
     
     # Patterns
-    # Vale: <!-- vale RuleName = NO -->
-    vale_pattern = r'<!--\s*vale\s+([A-Za-z0-9.]+)\s*=\s*NO\s*-->'
+    # Vale: <!-- vale RuleName = NO --> (specific rule)
+    vale_specific_pattern = r'<!--\s*vale\s+([A-Za-z0-9.]+)\s*=\s*NO\s*-->'
     
-    # Markdownlint: <!-- markdownlint-disable MD### -->
-    markdown_pattern = r'<!--\s*markdownlint-disable\s+(MD\d{3})\s*-->'
+    # Vale: <!-- vale off --> (global disable)
+    vale_global_pattern = r'<!--\s*vale\s+off\s*-->'
+    
+    # Markdownlint: <!-- markdownlint-disable MD### --> (specific rule)
+    markdown_specific_pattern = r'<!--\s*markdownlint-disable\s+(MD\d{3})\s*-->'
+    
+    # Markdownlint: <!-- markdownlint-disable --> (global disable)
+    markdown_global_pattern = r'<!--\s*markdownlint-disable\s*-->'
     
     lines = content.split('\n')
     
     for line_num, line in enumerate(lines, start=1):
-        # Check for Vale exceptions
-        vale_match = re.search(vale_pattern, line)
-        if vale_match:
+        # Check for Vale specific rule exceptions
+        vale_specific_match = re.search(vale_specific_pattern, line)
+        if vale_specific_match:
             exceptions['vale'].append({
                 'line': line_num,
-                'rule': vale_match.group(1),
+                'rule': vale_specific_match.group(1),
                 'full_match': line.strip()
             })
         
-        # Check for markdownlint exceptions
-        md_match = re.search(markdown_pattern, line)
-        if md_match:
+        # Check for Vale global disable
+        vale_global_match = re.search(vale_global_pattern, line)
+        if vale_global_match:
+            exceptions['vale'].append({
+                'line': line_num,
+                'rule': 'vale-off (global)',
+                'full_match': line.strip()
+            })
+        
+        # Check for markdownlint specific rule exceptions
+        md_specific_match = re.search(markdown_specific_pattern, line)
+        if md_specific_match:
             exceptions['markdownlint'].append({
                 'line': line_num,
-                'rule': md_match.group(1),
+                'rule': md_specific_match.group(1),
+                'full_match': line.strip()
+            })
+        
+        # Check for markdownlint global disable
+        md_global_match = re.search(markdown_global_pattern, line)
+        if md_global_match:
+            exceptions['markdownlint'].append({
+                'line': line_num,
+                'rule': 'markdownlint-disable (global)',
                 'full_match': line.strip()
             })
     
@@ -162,17 +205,19 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s README.md                    # Normal output
-  %(prog)s --action docs/api.md         # GitHub Actions output (warnings and errors)
-  %(prog)s --action all docs/api.md     # GitHub Actions output (all levels)
-  %(prog)s --action error docs/api.md   # GitHub Actions output (errors only)
+  %(prog)s README.md                         # Single file, normal output
+  %(prog)s file1.md file2.md file3.md        # Multiple files
+  %(prog)s docs/*.md                         # Glob expansion (shell)
+  %(prog)s --action docs/api.md              # GitHub Actions output
+  %(prog)s --action all docs/*.md            # Multiple files with Actions
         """
     )
     
     parser.add_argument(
-        'filename',
+        'files',
+        nargs='+',
         type=str,
-        help='Path to the Markdown file to scan'
+        help='Path(s) to the Markdown file(s) to scan'
     )
     
     parser.add_argument(
@@ -188,27 +233,73 @@ Examples:
     
     args = parser.parse_args()
     
-    filepath = Path(args.filename)
+    # Track overall status
+    all_exceptions = {'vale': [], 'markdownlint': []}
+    failed_files = []
+    total_files = len(args.files)
     
-    # Read file using shared utility
-    content = read_markdown_file(filepath)
-    if content is None:
-        log("File not found or unreadable",
-            "error",
-            str(filepath),
-            None,
-            args.action is not None,
-            args.action or 'warning')
+    use_actions = args.action is not None
+    action_level = args.action or 'warning'
+    
+    # Progress message
+    if total_files > 1:
+        log(f"Scanning {total_files} file(s) for linter exceptions...", "info")
+    
+    # Process each file
+    for idx, filename in enumerate(args.files, 1):
+        filepath = Path(filename)
+        
+        # Progress indicator for multiple files
+        if total_files > 1:
+            log(f"[{idx}/{total_files}] Processing {filepath.name}", "info")
+        
+        # Read file using shared utility
+        content = read_markdown_file(filepath)
+        if content is None:
+            failed_files.append(str(filepath))
+            log(f"Failed to read {filepath}",
+                "error",
+                str(filepath),
+                None,
+                use_actions,
+                action_level)
+            continue
+        
+        # Scan for exceptions
+        exceptions = list_vale_exceptions(content)
+        
+        # Output results for this file
+        if args.action:
+            output_action(filepath, exceptions, action_level)
+        else:
+            output_normal(filepath, exceptions)
+        
+        # Aggregate for summary
+        all_exceptions['vale'].extend(exceptions['vale'])
+        all_exceptions['markdownlint'].extend(exceptions['markdownlint'])
+    
+    # Final summary for multiple files
+    if total_files > 1:
+        total_vale = len(all_exceptions['vale'])
+        total_md = len(all_exceptions['markdownlint'])
+        
+        log(f"Summary: {total_vale} Vale, {total_md} markdownlint exceptions across {total_files} files",
+            "info")
+        
+        if use_actions and action_level == 'all':
+            log(f"Scanned {total_files} files: {total_vale} Vale, {total_md} markdownlint exceptions total",
+                "notice",
+                None,
+                None,
+                True,
+                action_level)
+    
+    # Exit with error if any files failed
+    if failed_files:
+        log(f"Failed to process {len(failed_files)} file(s)", "error")
         sys.exit(1)
     
-    # Scan for exceptions
-    exceptions = list_vale_exceptions(content)
-    
-    # Output results
-    if args.action:
-        output_action(filepath, exceptions, args.action)
-    else:
-        output_normal(filepath, exceptions)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

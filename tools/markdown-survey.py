@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Count unique markdown notation patterns in a file.
+Count unique markdown notation patterns in files.
 
 Usage:
-    markdown-survey.py <filename> [--action [LEVEL]]
+    markdown-survey.py <file1> [file2 ...] [--action [LEVEL]]
 
 This tool analyzes markdown files to count:
 - Words (excluding code, HTML, and markdown notation)
@@ -11,9 +11,17 @@ This tool analyzes markdown files to count:
 - Unique notation types used
 
 Examples:
+    # Single file
     markdown-survey.py README.md
-    markdown-survey.py --action docs/api.md
-    markdown-survey.py --action all docs/api.md
+    
+    # Multiple files
+    markdown-survey.py file1.md file2.md file3.md
+    
+    # With glob expansion
+    markdown-survey.py docs/*.md
+    
+    # GitHub Actions mode
+    markdown-survey.py --action docs/*.md
 """
 
 import sys
@@ -152,17 +160,19 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s README.md                    # Normal output
-  %(prog)s --action docs/api.md         # GitHub Actions output (warnings and errors)
-  %(prog)s --action all docs/api.md     # GitHub Actions output (all levels)
-  %(prog)s --action error docs/api.md   # GitHub Actions output (errors only)
+  %(prog)s README.md                         # Single file, normal output
+  %(prog)s file1.md file2.md file3.md        # Multiple files
+  %(prog)s docs/*.md                         # Glob expansion (shell)
+  %(prog)s --action docs/api.md              # GitHub Actions output
+  %(prog)s --action all docs/*.md            # Multiple files with Actions
         """
     )
     
     parser.add_argument(
-        'filename',
+        'files',
+        nargs='+',
         type=str,
-        help='Path to the markdown file to analyze'
+        help='Path(s) to the markdown file(s) to analyze'
     )
     
     parser.add_argument(
@@ -178,37 +188,92 @@ Examples:
     
     args = parser.parse_args()
     
-    filepath = Path(args.filename)
+    # Track overall status and aggregates
+    failed_files = []
+    total_files = len(args.files)
     
-    # Read file using shared utility
-    content = read_markdown_file(filepath)
-    if content is None:
-        log("File not found or unreadable",
-            "error",
-            str(filepath),
-            None,
-            args.action is not None,
-            args.action or 'warning')
+    # Aggregates across all files
+    total_words = 0
+    total_notations = 0
+    all_unique_notations = set()
+    
+    use_actions = args.action is not None
+    action_level = args.action or 'warning'
+    
+    # Progress message for multiple files
+    if total_files > 1:
+        log(f"Analyzing {total_files} markdown file(s)...", "info")
+    
+    # Process each file
+    for idx, filename in enumerate(args.files, 1):
+        filepath = Path(filename)
+        
+        # Progress indicator for multiple files
+        if total_files > 1:
+            log(f"[{idx}/{total_files}] Processing {filepath.name}", "info")
+        
+        # Read file using shared utility
+        content = read_markdown_file(filepath)
+        if content is None:
+            failed_files.append(str(filepath))
+            log(f"Failed to read {filepath}",
+                "error",
+                str(filepath),
+                None,
+                use_actions,
+                action_level)
+            continue
+        
+        # Count words and notations for this file
+        word_count = count_words(content)
+        markdown_notations = list_markdown_notations(content)
+        markdown_notation_count = len(markdown_notations)
+        unique_notations = set(markdown_notations)
+        unique_notation_count = len(unique_notations)
+        unique_notation_list = ', '.join(sorted(unique_notations))
+        
+        # Format output message for this file
+        message = (f"{filepath.name}: {word_count} words, "
+                   f"{markdown_notation_count} markdown_symbols, "
+                   f"{unique_notation_count} unique_codes: {unique_notation_list}")
+        
+        # Output results for this file
+        if use_actions:
+            log(message, "notice", str(filepath), None, True, action_level)
+        else:
+            log(message, "info")
+        
+        # Aggregate for summary
+        total_words += word_count
+        total_notations += markdown_notation_count
+        all_unique_notations.update(unique_notations)
+    
+    # Final summary for multiple files
+    if total_files > 1:
+        files_processed = total_files - len(failed_files)
+        all_unique_count = len(all_unique_notations)
+        all_unique_list = ', '.join(sorted(all_unique_notations))
+        
+        summary = (f"Summary: {files_processed} files, {total_words} total words, "
+                   f"{total_notations} total markdown_symbols, "
+                   f"{all_unique_count} unique_codes across all files: {all_unique_list}")
+        
+        log(summary, "info")
+        
+        if use_actions and action_level == 'all':
+            log(f"Analyzed {files_processed} files: {total_words} words, {total_notations} symbols",
+                "notice",
+                None,
+                None,
+                True,
+                action_level)
+    
+    # Exit with error if any files failed
+    if failed_files:
+        log(f"Failed to process {len(failed_files)} file(s)", "error")
         sys.exit(1)
     
-    # Count words and notations
-    word_count = count_words(content)
-    markdown_notations = list_markdown_notations(content)
-    markdown_notation_count = len(markdown_notations)
-    unique_notations = set(markdown_notations)
-    unique_notation_count = len(unique_notations)
-    unique_notation_list = ', '.join(sorted(unique_notations))
-    
-    # Format output message
-    message = (f"{filepath.name}: {word_count} words, "
-               f"{markdown_notation_count} markdown_symbols, "
-               f"{unique_notation_count} unique_codes: {unique_notation_list}")
-    
-    # Output results
-    if args.action:
-        log(message, "notice", str(filepath), None, True, args.action)
-    else:
-        log(message, "info")
+    sys.exit(0)
 
 
 if __name__ == "__main__":

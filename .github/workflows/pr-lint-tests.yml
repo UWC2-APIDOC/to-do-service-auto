@@ -21,6 +21,7 @@ jobs:
         with:
           files: |
             **/*.md
+            !tools/**/*.md
           separator: ','
 
       - name: Log changed files

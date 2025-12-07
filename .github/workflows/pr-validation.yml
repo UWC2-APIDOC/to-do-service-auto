@@ -1,0 +1,478 @@
+name: Pull Request Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # ============================================================
+  # STAGE 0: Discover Changed Files
+  # ============================================================
+  discover-changes:
+    name: Discover Changed Files
+    runs-on: ubuntu-latest
+    outputs:
+      # Markdown files (excluding tools)
+      all_md_files: ${{ steps.all-md.outputs.all_changed_files }}
+      all_md_count: ${{ steps.all-md.outputs.all_changed_files_count }}
+      any_md_changed: ${{ steps.all-md.outputs.any_changed }}
+      
+      # Docs markdown files (for API testing)
+      docs_md_files: ${{ steps.docs-md.outputs.all_changed_files }}
+      docs_md_count: ${{ steps.docs-md.outputs.all_changed_files_count }}
+      any_docs_changed: ${{ steps.docs-md.outputs.any_changed }}
+      
+      # Tools files
+      any_tools_changed: ${{ steps.tools.outputs.any_changed }}
+      
+      # Files outside allowed directories
+      unauthorized_files: ${{ steps.outside-allowed.outputs.all_changed_files }}
+      any_unauthorized: ${{ steps.outside-allowed.outputs.any_changed }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Get all markdown files (excluding tools)
+        id: all-md
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            **/*.md
+            !tools/**/*.md
+          separator: ','
+      
+      - name: Get docs markdown files
+        id: docs-md
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            docs/**/*.md
+            assignments/**/*.md
+          separator: ' '
+      
+      - name: Get tools files
+        id: tools
+        uses: tj-actions/changed-files@v40
+        with:
+          files: tools/**
+      
+      - name: Get files outside allowed directories
+        id: outside-allowed
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            !docs/**
+            !assignments/**
+      
+      - name: Display summary
+        run: |
+          echo "## Changed Files Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Markdown files: ${{ steps.all-md.outputs.all_changed_files_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Docs markdown: ${{ steps.docs-md.outputs.all_changed_files_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Tools files changed: ${{ steps.tools.outputs.any_changed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Unauthorized files: ${{ steps.outside-allowed.outputs.any_changed }}" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================
+  # STAGE 1: Test Tools (BLOCKING)
+  # ============================================================
+  test-tools:
+    name: Validate Testing Tools
+    runs-on: ubuntu-latest
+    needs: [discover-changes]
+    if: needs.discover-changes.outputs.any_tools_changed == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: pip install pyyaml pytest --break-system-packages
+      
+      - name: Run tool tests
+        run: |
+          cd tools/tests
+          pytest -v
+      
+      - name: Test summary
+        if: always()
+        run: |
+          echo "## Testing Tools Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "All tool tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Tool tests failed - fix before proceeding" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ============================================================
+  # STAGE 2: Parallel Basic Validation
+  # ============================================================
+  validate-commits:
+    name: Validate Commit Structure
+    runs-on: ubuntu-latest
+    needs: [test-tools, discover-changes]
+    if: |
+      always() && 
+      (needs.test-tools.result == 'success' || needs.test-tools.result == 'skipped')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      # Check unauthorized file changes
+      - name: Check unauthorized file changes
+        if: needs.discover-changes.outputs.any_unauthorized == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const author = context.payload.pull_request.user.login;
+            
+            const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: author
+            });
+            
+            if (permission.permission === 'admin' || permission.permission === 'write') {
+              console.log(`User ${author} has write access`);
+            } else {
+              core.setFailed(`Only files in /docs/ and /assignments/ can be modified by students.`);
+              console.log('Unauthorized files changed:');
+              console.log('${{ needs.discover-changes.outputs.unauthorized_files }}'.split(' ').join('\n'));
+              console.log('Help: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/File-Locations');
+            }
+      
+      # Check if branch is up to date
+      - name: Check if branch is up to date
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          
+          if ! git merge-base --is-ancestor $BASE_SHA $HEAD_SHA; then
+            echo "::warning::PR branch not up to date. Consider rebasing."
+            echo "Help: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Updating-Your-Branch"
+          else
+            echo "Branch is up to date"
+          fi
+      
+      # Check commit requirements
+      - name: Check commit requirements
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          
+          COMMIT_COUNT=$(git rev-list --count $BASE_SHA..$HEAD_SHA)
+          MERGE_COMMITS=$(git rev-list --merges $BASE_SHA..$HEAD_SHA | wc -l)
+          
+          FAILED=false
+          
+          if [ $COMMIT_COUNT -ne 1 ]; then
+            echo "::error::PR must contain exactly one commit; found $COMMIT_COUNT"
+            echo "Help: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Squashing-Commits"
+            FAILED=true
+          fi
+          
+          if [ $MERGE_COMMITS -gt 0 ]; then
+            echo "::error::PR contains merge commits; found $MERGE_COMMITS"
+            echo "Help: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Avoiding-Merge-Commits"
+            FAILED=true
+          fi
+          
+          if [ "$FAILED" = true ]; then
+            exit 1
+          fi
+          
+          echo "PR has exactly 1 commit and no merge commits"
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Commit Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "Commit structure valid" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Commit validation failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  lint-markdown:
+    name: Lint Markdown Files
+    runs-on: ubuntu-latest
+    needs: [test-tools, discover-changes]
+    if: |
+      always() && 
+      (needs.test-tools.result == 'success' || needs.test-tools.result == 'skipped') &&
+      needs.discover-changes.outputs.any_md_changed == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+      
+      - name: Install Python dependencies
+        run: pip install pyyaml --break-system-packages
+      
+      # Test filenames
+      - name: Test filenames
+        env:
+          CHANGED_FILES: ${{ needs.discover-changes.outputs.all_md_files }}
+        run: python3 tools/test-filenames.py --action
+      
+      # List linter exceptions (Phase 1 optimized)
+      - name: List linter exceptions
+        run: |
+          files="${{ needs.discover-changes.outputs.all_md_files }}"
+          files_space="${files//,/ }"
+          python3 tools/list-linter-exceptions.py --action $files_space
+      
+      # Markdown survey (Phase 1 optimized)
+      - name: Survey markdown
+        run: |
+          files="${{ needs.discover-changes.outputs.all_md_files }}"
+          files_space="${files//,/ }"
+          python3 tools/markdown-survey.py --action $files_space
+      
+      # MarkdownLint
+      - name: Run MarkdownLint
+        uses: DavidAnson/markdownlint-cli2-action@v21
+        with:
+          globs: ${{ needs.discover-changes.outputs.all_md_files }}
+          config: .markdownlint.json
+          separator: ','
+      
+      # Vale (with caching)
+      - name: Cache Vale
+        uses: actions/cache@v3
+        with:
+          path: ~/.vale
+          key: vale-3.12.0
+      
+      - name: Install Vale
+        run: |
+          if [ ! -f ~/.vale/vale ]; then
+            mkdir -p ~/.vale
+            wget https://github.com/errata-ai/vale/releases/download/v3.12.0/vale_3.12.0_Linux_64-bit.tar.gz
+            tar -xvzf vale_3.12.0_Linux_64-bit.tar.gz
+            mv vale ~/.vale/
+          fi
+          sudo ln -sf ~/.vale/vale /usr/local/bin/vale
+          vale --version
+      
+      - name: Run Vale
+        uses: errata-ai/vale-action@v2.1.1
+        with:
+          version: '3.12.0'
+          files: ${{ needs.discover-changes.outputs.all_md_files }}
+          separator: ','
+          fail_on_error: true
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Markdown Linting" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "All markdown files passed linting" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Markdown linting failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ============================================================
+  # STAGE 3: Test API Documentation
+  # ============================================================
+  test-api-docs:
+    name: Test API Documentation
+    runs-on: ubuntu-latest
+    needs: [discover-changes, validate-commits, lint-markdown]
+    if: |
+      always() &&
+      needs.validate-commits.result == 'success' &&
+      needs.lint-markdown.result == 'success' &&
+      needs.discover-changes.outputs.any_docs_changed == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+      
+      - name: Install Python dependencies
+        run: |
+          pip install pyyaml jsonschema --break-system-packages
+      
+      # Check for testable files
+      - name: Check for testable files
+        id: check-testable
+        run: |
+          HAS_TESTABLE=false
+          for file in ${{ needs.discover-changes.outputs.docs_md_files }}; do
+            if grep -q "^test:" "$file" 2>/dev/null; then
+              HAS_TESTABLE=true
+              break
+            fi
+          done
+          echo "has_testable=$HAS_TESTABLE" >> $GITHUB_OUTPUT
+          
+          if [ "$HAS_TESTABLE" = "true" ]; then
+            echo "Found files with test configurations"
+          else
+            echo "No testable examples found"
+          fi
+      
+      # Determine test configuration
+      - name: Determine test configuration
+        if: steps.check-testable.outputs.has_testable == 'true'
+        id: test-config
+        run: |
+          for file in ${{ needs.discover-changes.outputs.docs_md_files }}; do
+            if grep -q "^test:" "$file" 2>/dev/null; then
+              DB_PATH=$(python3 -c "
+import yaml, re
+with open('$file', 'r') as f:
+    content = f.read()
+fm_match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
+if fm_match:
+    try:
+        metadata = yaml.safe_load(fm_match.group(1))
+        test_config = metadata.get('test', {})
+        db_path = test_config.get('local_database', '/api/to-do-db-source.json')
+        print(db_path.lstrip('/'))
+    except: pass
+" 2>/dev/null)
+              
+              if [ -n "$DB_PATH" ]; then
+                echo "test_db=$DB_PATH" >> $GITHUB_OUTPUT
+                echo "Using test database: $DB_PATH"
+                break
+              fi
+            fi
+          done
+          
+          if [ -z "$DB_PATH" ]; then
+            echo "test_db=api/to-do-db-source.json" >> $GITHUB_OUTPUT
+            echo "Using default test database"
+          fi
+      
+      # Install and start json-server
+      - name: Install json-server
+        if: steps.check-testable.outputs.has_testable == 'true'
+        run: |
+          npm install -g json-server@0.17.4
+          json-server --version
+      
+      - name: Start json-server
+        if: steps.check-testable.outputs.has_testable == 'true'
+        run: |
+          if [ ! -f "${{ steps.test-config.outputs.test_db }}" ]; then
+            echo "::error::Test database not found: ${{ steps.test-config.outputs.test_db }}"
+            exit 1
+          fi
+          
+          json-server --watch ${{ steps.test-config.outputs.test_db }} --port 3000 > json-server.log 2>&1 &
+          SERVER_PID=$!
+          echo $SERVER_PID > json-server.pid
+          
+          echo "Waiting for json-server..."
+          for i in {1..10}; do
+            if curl -s http://localhost:3000 > /dev/null 2>&1; then
+              echo "json-server running on http://localhost:3000"
+              exit 0
+            fi
+            sleep 1
+          done
+          
+          echo "::error::json-server failed to start"
+          cat json-server.log
+          exit 1
+      
+      # Test files
+      - name: Test documentation files
+        if: steps.check-testable.outputs.has_testable == 'true'
+        id: test-files
+        run: |
+          FAILED_TESTS=0
+          TESTED_FILES=0
+          
+          for file in ${{ needs.discover-changes.outputs.docs_md_files }}; do
+            if grep -q "^test:" "$file" 2>/dev/null; then
+              TESTED_FILES=$((TESTED_FILES + 1))
+              
+              if python3 ./tools/test-api-docs.py "$file" --action; then
+                echo "PASSED: $file"
+              else
+                echo "FAILED: $file"
+                FAILED_TESTS=$((FAILED_TESTS + 1))
+              fi
+            fi
+          done
+          
+          if [ $FAILED_TESTS -gt 0 ]; then
+            echo "::error::$FAILED_TESTS file(s) failed testing"
+            exit 1
+          fi
+          
+          if [ $TESTED_FILES -eq 0 ]; then
+            echo "No testable files found"
+          else
+            echo "All $TESTED_FILES file(s) passed testing"
+          fi
+      
+      # Cleanup
+      - name: Stop json-server
+        if: always() && steps.check-testable.outputs.has_testable == 'true'
+        run: |
+          if [ -f json-server.pid ]; then
+            kill $(cat json-server.pid) 2>/dev/null || true
+            rm json-server.pid
+            echo "json-server stopped"
+          fi
+      
+      - name: Upload json-server logs
+        if: always() && steps.check-testable.outputs.has_testable == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: json-server-logs
+          path: json-server.log
+          retention-days: 7
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "## API Documentation Testing" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check-testable.outputs.has_testable }}" != "true" ]; then
+            echo "No testable API examples found" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ job.status }}" == "success" ]; then
+            echo "All API examples tested successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Some API examples failed testing" >> $GITHUB_STEP_SUMMARY
+          fi

@@ -210,6 +210,7 @@ def execute_curl(curl_command):
             parts = output.split('\r\n\r\n', 1)
         
         if len(parts) < 2:
+            print (f"ERROR in response buffer:\n{result.stdout}")  
             return None, None, "Could not parse response"
         
         headers_text = parts[0]

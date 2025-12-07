@@ -80,8 +80,8 @@ def extract_curl_command(content, example_name):
     flexible_words = [rf'`?{word}`?' for word in words]
     flexible_pattern = r'\s+'.join(flexible_words)
     
-    # Look for heading with "request" (h2 or h3)
-    heading_pattern = rf'^##\#?\s+{flexible_pattern}\s+request'
+    # Look for heading with "request" (h3 or h4)
+    heading_pattern = rf'^###\#?\s+{flexible_pattern}\s+request'
     
     lines = content.split('\n')
     in_example = False
@@ -141,8 +141,8 @@ def extract_expected_response(content, example_name):
     flexible_words = [rf'`?{word}`?' for word in words]
     flexible_pattern = r'\s+'.join(flexible_words)
     
-    # Look for heading with "response" (h2 or h3)
-    heading_pattern = rf'^##\#?\s+{flexible_pattern}\s+response'
+    # Look for heading with "response" (h3 or h4)
+    heading_pattern = rf'^###\#?\s+{flexible_pattern}\s+response'
     
     lines = content.split('\n')
     in_example = False

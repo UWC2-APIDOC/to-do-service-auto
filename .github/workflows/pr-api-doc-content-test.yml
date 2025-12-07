@@ -32,12 +32,13 @@ jobs:
           pip install pyyaml --break-system-packages
           pip install jsonschema --break-system-packages
       
-      - name: Get changed markdown files in docs/
+      - name: Get changed markdown files in locations used by students
         id: changed-files
         uses: tj-actions/changed-files@v40
         with:
           files: |
             docs/**/*.md
+            assignments/**/*.md
       
       - name: List changed files
         if: steps.changed-files.outputs.any_changed == 'true'

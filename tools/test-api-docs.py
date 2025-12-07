@@ -86,7 +86,8 @@ def extract_curl_command(content, example_name):
     lines = content.split('\n')
     in_example = False
     in_code_block = False
-    curl_command = []
+    curl_cmd_elements = []
+    curl_cmd_string = ""
     
     for i, line in enumerate(lines):
         # Check if we found the heading
@@ -107,14 +108,18 @@ def extract_curl_command(content, example_name):
             
             # Collect curl command lines
             if in_code_block:
-                curl_command.append(line)
+                curl_cmd_elements.append(line)
             
             # Stop if we hit another heading
             if line.startswith('#'):
                 break
     
-    if curl_command:
-        return '\n'.join(curl_command).strip()
+    if curl_cmd_elements:
+        curl_cmd_string = '\n'.join(curl_cmd_elements).strip()
+        # Add -i flag if not present to get headers
+        if '-i' not in curl_cmd_string and '--include' not in curl_cmd_string:
+            curl_cmd_string = curl_cmd_string.replace('curl', 'curl -i', 1)
+        return curl_cmd_string
     
     return None
 

@@ -350,21 +350,13 @@ jobs:
         if: steps.check-testable.outputs.has_testable == 'true'
         id: test-config
         run: |
+          # Extract test configuration from the first testable file
+          # All files should use the same test database and server
           for file in ${{ needs.discover-changes.outputs.docs_md_files }}; do
             if grep -q "^test:" "$file" 2>/dev/null; then
-              DB_PATH=$(python3 -c "
-                import yaml, re
-                with open('$file', 'r') as f:
-                    content = f.read()
-                fm_match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
-                if fm_match:
-                    try:
-                        metadata = yaml.safe_load(fm_match.group(1))
-                        test_config = metadata.get('test', {})
-                        db_path = test_config.get('local_database', '/api/to-do-db-source.json')
-                        print(db_path.lstrip('/'))
-                    except: pass
-                " 2>/dev/null)
+              # Use get-database-path.py to extract database path
+              DB_PATH=$(python3 ./tools/get-database-path.py "$file")
+              
               if [ -n "$DB_PATH" ]; then
                 echo "test_db=$DB_PATH" >> $GITHUB_OUTPUT
                 echo "Using test database: $DB_PATH"
@@ -373,9 +365,10 @@ jobs:
             fi
           done
           
+          # Default if not found
           if [ -z "$DB_PATH" ]; then
             echo "test_db=api/to-do-db-source.json" >> $GITHUB_OUTPUT
-            echo "Using default test database"
+            echo "Using default test database: api/to-do-db-source.json"
           fi
       
       # Install and start json-server

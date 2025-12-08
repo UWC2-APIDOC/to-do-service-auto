@@ -3,7 +3,7 @@
 Scan Markdown files for Vale and markdownlint exception tags.
 
 Usage:
-    list-linter-exceptions.py <file1> [file2 ...] [--action [LEVEL]]
+    list-linter-exceptions.py <file1> [file2 ...] [--action LEVEL]
 
 Examples:
     # Single file
@@ -15,8 +15,9 @@ Examples:
     # With glob expansion (shell expands)
     list-linter-exceptions.py docs/*.md
     
-    # GitHub Actions mode
-    list-linter-exceptions.py docs/*.md --action
+    # GitHub Actions mode (level required)
+    list-linter-exceptions.py docs/*.md --action warning
+    list-linter-exceptions.py docs/*.md --action error
 
 Note: Does not test front matter sections.
 """
@@ -208,8 +209,8 @@ Examples:
   %(prog)s README.md                         # Single file, normal output
   %(prog)s file1.md file2.md file3.md        # Multiple files
   %(prog)s docs/*.md                         # Glob expansion (shell)
-  %(prog)s --action docs/api.md              # GitHub Actions output
-  %(prog)s --action all docs/*.md            # Multiple files with Actions
+  %(prog)s docs/*.md --action warning        # GitHub Actions mode
+  %(prog)s docs/*.md --action error          # Only error annotations
         """
     )
     
@@ -223,12 +224,9 @@ Examples:
     parser.add_argument(
         '--action', '-a',
         type=str,
-        nargs='?',
-        const='warning',
         default=None,
         choices=['all', 'warning', 'error'],
-        metavar='LEVEL',
-        help='Output GitHub Actions annotations. Optional LEVEL: all, warning (default if flag present), error'
+        help='Output GitHub Actions annotations at specified level (all, warning, error)'
     )
     
     args = parser.parse_args()

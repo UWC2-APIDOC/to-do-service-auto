@@ -97,7 +97,7 @@ def test_extract_curl_command():
     content = """
 # API Doc
 
-## GET example request
+### GET example request
 
 ```bash
 curl http://localhost:3000/users
@@ -105,12 +105,13 @@ curl http://localhost:3000/users
 """
     cmd = extract_curl_command(content, "GET example")
     assert cmd is not None, "Should find curl command"
-    assert "curl http://localhost:3000/users" in cmd, f"Unexpected command: {cmd}"
+    # extract_curl_command inserts -i in commands that don't have it
+    assert "curl -i http://localhost:3000/users" in cmd, f"Unexpected command: {cmd}"
     print("  SUCCESS: Basic curl command extracted")
     
     # Test 2: Curl with backticks in heading
     content = """
-## `GET` example request
+### `GET` example request
 
 ```bash
 curl http://localhost:3000/users
@@ -122,7 +123,7 @@ curl http://localhost:3000/users
     
     # Test 3: Multi-line curl command
     content = """
-## POST example request
+### POST example request
 
 ```bash
 curl -X POST http://localhost:3000/users \\
@@ -132,7 +133,8 @@ curl -X POST http://localhost:3000/users \\
 """
     cmd = extract_curl_command(content, "POST example")
     assert cmd is not None, "Should find multi-line curl command"
-    assert "curl -X POST" in cmd, "Should contain POST method"
+    # extract_curl_command inserts -i in commands that don't have it
+    assert "curl -i -X POST" in cmd, "Should contain POST method"
     assert "-H" in cmd, "Should contain header flag"
     print("  SUCCESS: Multi-line curl command extracted")
     
@@ -167,7 +169,7 @@ def test_extract_expected_response():
     
     # Test 1: Simple JSON object
     content = """
-## GET example response
+### GET example response
 
 ```json
 {
@@ -184,7 +186,7 @@ def test_extract_expected_response():
     
     # Test 2: JSON array
     content = """
-## GET all response
+### GET all response
 
 ```json
 [
@@ -201,7 +203,7 @@ def test_extract_expected_response():
     
     # Test 3: With backticks in heading
     content = """
-## `POST` example response
+### `POST` example response
 
 ```json
 {"created": true}

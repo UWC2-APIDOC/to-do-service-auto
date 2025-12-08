@@ -235,21 +235,21 @@ jobs:
       - name: Test filenames
         env:
           CHANGED_FILES: ${{ needs.discover-changes.outputs.all_md_files }}
-        run: python3 tools/test-filenames.py --action
+        run: python3 tools/test-filenames.py --action warning
       
       # List linter exceptions (Phase 1 optimized)
       - name: List linter exceptions
         run: |
           files="${{ needs.discover-changes.outputs.all_md_files }}"
           files_space="${files//,/ }"
-          python3 tools/list-linter-exceptions.py $files_space --action
+          python3 tools/list-linter-exceptions.py --action warning $files_space
       
       # Markdown survey (Phase 1 optimized)
       - name: Survey markdown
         run: |
           files="${{ needs.discover-changes.outputs.all_md_files }}"
           files_space="${files//,/ }"
-          python3 tools/markdown-survey.py $files_space --action
+          python3 tools/markdown-survey.py --action warning $files_space
       
       # MarkdownLint
       - name: Run markdownLint
@@ -297,7 +297,7 @@ jobs:
           fi
 
   # ============================================================
-  # STAGE 3: Test API Documentation
+  # STAGE 3: Test API Documentation Examples
   # ============================================================
   test-api-docs:
     name: Test API documentation examples
@@ -422,7 +422,7 @@ jobs:
             if grep -q "^test:" "$file" 2>/dev/null; then
               TESTED_FILES=$((TESTED_FILES + 1))
               
-              if python3 ./tools/test-api-docs.py "$file" --action; then
+              if python3 ./tools/test-api-docs.py "$file" --action warning; then
                 echo "PASSED: $file"
               else
                 echo "FAILED: $file"

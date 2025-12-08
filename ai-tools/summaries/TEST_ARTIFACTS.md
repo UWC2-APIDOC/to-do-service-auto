@@ -1,3 +1,5 @@
+<!-- vale off -->
+<!-- markdownlint-disable -->
 # Test Artifacts Summary
 
 This document describes all test files created for comprehensive regression testing.

@@ -6,7 +6,7 @@ This script checks filenames from the CHANGED_FILES environment variable
 for characters that could cause security issues or break shell commands.
 
 Usage:
-    test-filenames.py [--action [LEVEL]]
+    test-filenames.py [--action LEVEL]
 
 Environment:
     CHANGED_FILES: Comma-separated list of changed filenames
@@ -81,8 +81,7 @@ def main():
         epilog="""
 Examples:
   %(prog)s                              # Normal output
-  %(prog)s --action                     # GitHub Actions output (warnings and errors)
-  %(prog)s --action all                 # GitHub Actions output (all levels)
+  %(prog)s --action warning             # GitHub Actions output (warnings)
   %(prog)s --action error               # GitHub Actions output (errors only)
 
 Environment:
@@ -93,12 +92,9 @@ Environment:
     parser.add_argument(
         '--action', '-a',
         type=str,
-        nargs='?',
-        const='warning',
         default=None,
         choices=['all', 'warning', 'error'],
-        metavar='LEVEL',
-        help='Output GitHub Actions annotations. Optional LEVEL: all, warning (default), error'
+        help='Output GitHub Actions annotations at specified level (all, warning, error)'
     )
     
     args = parser.parse_args()

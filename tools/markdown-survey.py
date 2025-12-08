@@ -3,7 +3,7 @@
 Count unique markdown notation patterns in files.
 
 Usage:
-    markdown-survey.py <file1> [file2 ...] [--action [LEVEL]]
+    markdown-survey.py <file1> [file2 ...] [--action LEVEL]
 
 This tool analyzes markdown files to count:
 - Words (excluding code, HTML, and markdown notation)
@@ -20,8 +20,9 @@ Examples:
     # With glob expansion
     markdown-survey.py docs/*.md
     
-    # GitHub Actions mode
-    markdown-survey.py --action docs/*.md
+    # GitHub Actions mode (level required)
+    markdown-survey.py docs/*.md --action warning
+    markdown-survey.py docs/*.md --action all
 """
 
 import sys
@@ -163,8 +164,8 @@ Examples:
   %(prog)s README.md                         # Single file, normal output
   %(prog)s file1.md file2.md file3.md        # Multiple files
   %(prog)s docs/*.md                         # Glob expansion (shell)
-  %(prog)s --action docs/api.md              # GitHub Actions output
-  %(prog)s --action all docs/*.md            # Multiple files with Actions
+  %(prog)s docs/*.md --action warning        # GitHub Actions mode
+  %(prog)s docs/*.md --action all            # All annotations
         """
     )
     
@@ -178,12 +179,9 @@ Examples:
     parser.add_argument(
         '--action', '-a',
         type=str,
-        nargs='?',
-        const='warning',
         default=None,
         choices=['all', 'warning', 'error'],
-        metavar='LEVEL',
-        help='Output GitHub Actions annotations. Optional LEVEL: all, warning (default), error'
+        help='Output GitHub Actions annotations at specified level (all, warning, error)'
     )
     
     args = parser.parse_args()
@@ -307,3 +305,4 @@ Example output:
 README.md: 1247 words, 342 markdown_symbols, 8 unique_codes: bold_asterisk, code_block, 
 heading_1, heading_2, inline_code, link, ordered_list, table_pipe, unordered_list
 """
+# end of markdown-survey.py

@@ -256,7 +256,7 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@v21
         with:
           globs: ${{ needs.discover-changes.outputs.all_md_files }}
-          config: .markdownlint.json
+          config: .github/schemas/markdownlint.json
           separator: ','
       
       # Vale (with caching)

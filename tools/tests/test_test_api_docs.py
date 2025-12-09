@@ -93,6 +93,9 @@ def test_extract_curl_command():
     print("TEST: extract_curl_command()")
     print("="*60)
     
+    # Use empty string as the default for server URL in tests
+    server_url = ""
+
     # Test 1: Basic curl command
     content = """
 # API Doc
@@ -103,7 +106,7 @@ def test_extract_curl_command():
 curl http://localhost:3000/users
 ```
 """
-    cmd = extract_curl_command(content, "GET example")
+    cmd = extract_curl_command(content, server_url, "GET example")
     assert cmd is not None, "Should find curl command"
     # extract_curl_command inserts -i in commands that don't have it
     assert "curl -i http://localhost:3000/users" in cmd, f"Unexpected command: {cmd}"
@@ -117,7 +120,7 @@ curl http://localhost:3000/users
 curl http://localhost:3000/users
 ```
 """
-    cmd = extract_curl_command(content, "GET example")
+    cmd = extract_curl_command(content, server_url, "GET example")
     assert cmd is not None, "Should find curl command with backticks in heading"
     print("  SUCCESS: Curl command with backticks extracted")
     
@@ -131,7 +134,7 @@ curl -X POST http://localhost:3000/users \\
   -d '{"name":"test"}'
 ```
 """
-    cmd = extract_curl_command(content, "POST example")
+    cmd = extract_curl_command(content, server_url, "POST example")
     assert cmd is not None, "Should find multi-line curl command"
     # extract_curl_command inserts -i in commands that don't have it
     assert "curl -i -X POST" in cmd, "Should contain POST method"
@@ -142,7 +145,7 @@ curl -X POST http://localhost:3000/users \\
     content = """
 # No curl here
 """
-    cmd = extract_curl_command(content, "Missing example")
+    cmd = extract_curl_command(content, server_url, "Missing example")
     assert cmd is None, "Should return None when not found"
     print("  SUCCESS: Returns None when command not found")
     
@@ -154,9 +157,26 @@ Just text: curl http://localhost:3000/users
 
 Not in a code block.
 """
-    cmd = extract_curl_command(content, "Example")
+    cmd = extract_curl_command(content, server_url, "Example")
     assert cmd is None, "Should return None when curl not in code block"
     print("  SUCCESS: Ignores curl commands outside code blocks")
+
+    # Test 6: Test server_url substitution
+    server_url = "localhost:3000"
+    content = """
+### `GET` example request
+
+```bash
+curl http://{server_url}/users
+```
+"""
+    cmd = extract_curl_command(content, server_url, "GET example")
+    print(f"Extracted command: {cmd}")
+    assert cmd is not None, "Should find curl command"
+    # extract_curl_command inserts -i in commands that don't have it
+    assert f"curl -i http://{server_url}/users" in cmd, f"Unexpected command: {cmd}"
+    assert server_url in cmd, "Should return the command with server_url substituted"
+    print("  SUCCESS: {server_url} substitution works correctly.")
     
     print("  ✓ All extract_curl_command tests passed")
 
@@ -438,14 +458,17 @@ def test_real_test_data_files():
     print("="*60)
     
     test_data_dir = Path(__file__).parent / "test_data"
-    
+    # Use empty string for server URL in tests
+    # this can be modified for the individual test cases if needed
+    server_url = ""  
+
     # Test 1: Can extract from sample file
     sample_file = test_data_dir / "api_doc_sample.md"
     if sample_file.exists():
         content = sample_file.read_text(encoding='utf-8')
         
         # Test curl extraction
-        curl = extract_curl_command(content, "GET example")
+        curl = extract_curl_command(content, server_url, "GET example")
         assert curl is not None, "Should extract curl from sample file"
         assert "curl" in curl.lower(), "Should contain curl command"
         print("  SUCCESS: Extracted curl from api_doc_sample.md")
@@ -461,7 +484,7 @@ def test_real_test_data_files():
     if get_file.exists():
         content = get_file.read_text(encoding='utf-8')
         
-        curl = extract_curl_command(content, "GET all users")
+        curl = extract_curl_command(content, server_url, "GET all users")
         assert curl is not None, "Should extract curl from GET file"
         print("  SUCCESS: Extracted from api_doc_get.md")
     
@@ -470,7 +493,7 @@ def test_real_test_data_files():
     if post_file.exists():
         content = post_file.read_text(encoding='utf-8')
         
-        curl = extract_curl_command(content, "POST example")
+        curl = extract_curl_command(content, server_url, "POST example")
         assert curl is not None, "Should extract curl from POST file"
         assert "POST" in curl, "Should be POST request"
         print("  SUCCESS: Extracted from api_doc_post.md")

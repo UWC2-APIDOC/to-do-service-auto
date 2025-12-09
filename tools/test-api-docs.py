@@ -61,12 +61,13 @@ def parse_testable_entry(entry):
     return example_name, expected_codes
 
 
-def extract_curl_command(content, example_name):
+def extract_curl_command(content, server_url, example_name):
     """
     Extract curl command from the specified example section.
     
     Args:
         content: Full markdown file content
+        server_url: Base server URL to replace in the curl command if substitution string found
         example_name: Name of the example to find
         
     Returns:
@@ -119,6 +120,9 @@ def extract_curl_command(content, example_name):
         # Add -i flag if not present to get headers
         if '-i' not in curl_cmd_string and '--include' not in curl_cmd_string:
             curl_cmd_string = curl_cmd_string.replace('curl', 'curl -i', 1)
+        # Replace server URL if the substitution string found
+        if server_url:
+            curl_cmd_string = curl_cmd_string.replace('{server_url}', server_url)
         return curl_cmd_string
     
     return None
@@ -292,12 +296,13 @@ def compare_json_objects(actual, expected, path=""):
     return len(differences) == 0, differences
 
 
-def test_example(content, example_name, expected_codes, file_path, use_actions, action_level):
+def test_example(content, test_config, example_name, expected_codes, file_path, use_actions, action_level):
     """
     Test a single example from the documentation.
     
     Args:
         content: Full markdown file content
+        test_config: Test metadata taken from file's front matter
         example_name: Name of the example to test
         expected_codes: List of acceptable HTTP status codes
         file_path: Path to the markdown file
@@ -313,7 +318,10 @@ def test_example(content, example_name, expected_codes, file_path, use_actions, 
     log(f"  -- Expected status: {', '.join(map(str, expected_codes))}")
     
     # Extract curl command
-    curl_cmd = extract_curl_command(content, example_name)
+    # get server_url specified in test config, default to empty string
+    # if not specified, the URL from the document will be used
+    server_url = test_config.get('server_url', '')
+    curl_cmd = extract_curl_command(content, server_url, example_name)
     if not curl_cmd:
         log(f"  -- Could not find example '{example_name}' or it is not formatted correctly", 
             "warning", file_path, None, use_actions, action_level)
@@ -446,7 +454,7 @@ def test_file(file_path, schema_path, use_actions=False, action_level="warning")
     for testable_entry in testable:
         example_name, expected_codes = parse_testable_entry(testable_entry)
         
-        if test_example(content, example_name, expected_codes, file_path, use_actions, action_level):
+        if test_example(content, test_config, example_name, expected_codes, file_path, use_actions, action_level):
             passed_tests += 1
         else:
             failed_tests += 1

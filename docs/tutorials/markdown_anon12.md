@@ -1,5 +1,35 @@
+---
+# markdownlint-disable
+# vale off
+# tags used by just-the-docs theme
+layout: default
+parent: Tutorials
+nav_order: 3
+# tags used by AI files
+description: Test file for testing and troubleshooting
+topic_type: tutorial
+tags:
+    - api
+categories: 
+    - tutorial
+ai_relevance: high
+importance: 6
+prerequisites: 
+    - /before-you-start-a-tutorial
+    - /api/user
+related_pages: []
+examples: []
+api_endpoints: 
+    - POST /users
+version: "v1.0"
+last_updated: "2026-03-01"
+# vale  on
+# markdownlint-enable
+---
+
 <!-- vale off -->
 <!-- markdownlint-disable -->
+
 # **Introduction**
 
 I am not as familiar with Markdown as I am with other open source markup languages such as AsciiDoc. In the past, I have used Markdown as my markup language when kicking off documentation for a Red Hat/IBM collaborative project called "InstructLab." Because it was essentially a startup project, documentation was hosted on GitHub and relied primarily on Markdown, meaning that I had to shift from AsciiDoc to Markdown while I prioritized that project at my job. Here are some advantages and disadvantages that I have experience using Markdown in the past:

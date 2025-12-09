@@ -1,6 +1,35 @@
+---
+# markdownlint-disable
+# vale off
+# tags used by just-the-docs theme
+layout: default
+parent: Tutorials
+nav_order: 4
+# tags used by AI files
+description: Test file for testing and troubleshooting
+topic_type: tutorial
+tags:
+    - api
+categories: 
+    - tutorial
+ai_relevance: high
+importance: 6
+prerequisites: 
+    - /before-you-start-a-tutorial
+    - /api/user
+related_pages: []
+examples: []
+api_endpoints: 
+    - POST /users
+version: "v1.0"
+last_updated: "2026-03-01"
+# vale  on
+# markdownlint-enable
+---
+
 <!-- vale off -->
 <!-- markdownlint-disable -->
-<!-- front matter not required -->
+
 # Breaking down Markdown
 ![Alt text](https://i.dailymail.co.uk/1s/2024/08/09/22/88366629-0-image-a-33_1723237478545.jpg)
 

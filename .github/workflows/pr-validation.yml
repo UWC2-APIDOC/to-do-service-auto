@@ -239,13 +239,37 @@ jobs:
         id: check-testable
         run: |
           HAS_TESTABLE=false
+          VALIDATION_FAILED=false
+          
           for file in ${{ needs.discover-changes.outputs.docs_md_files }}; do
+            # Check for front matter skip comment
+            if grep -qi "<!-- front matter not required -->" "$file" 2>/dev/null; then
+              # Error and fail if file is in /docs directory
+              if [[ "$file" == docs/* ]]; then
+                echo "::error file=$file::Front matter is required for files in /docs directory"
+                VALIDATION_FAILED=true
+                continue
+              fi
+              # Warning if in /assignments directory
+              if [[ "$file" == assignments/* ]]; then
+                echo "::warning file=$file::Front matter is recommended for assignment files"
+              fi
+              # Skip (silently for other directories)
+              continue
+            fi
+            
             # Use get-database-path.py to validate test configuration exists
             if python3 tools/get-database-path.py "$file" > /dev/null 2>&1; then
               HAS_TESTABLE=true
               break
             fi
           done
+          
+          if [ "$VALIDATION_FAILED" = true ]; then
+            echo "Front matter validation failed"
+            exit 1
+          fi
+          
           echo "has_testable=$HAS_TESTABLE" >> $GITHUB_OUTPUT
           
           if [ "$HAS_TESTABLE" = "true" ]; then
@@ -298,6 +322,26 @@ jobs:
           echo "Testing ${{ needs.discover-changes.outputs.docs_md_count }} file(s)..."
           
           for file in ${{ needs.discover-changes.outputs.docs_md_files }}; do
+            # Check for front matter skip comment
+            if grep -qi "<!-- front matter not required -->" "$file" 2>/dev/null; then
+              # Error and fail if file is in /docs directory
+              if [[ "$file" == docs/* ]]; then
+                echo "::error file=$file::Front matter is required for files in /docs directory"
+                FAILED_TESTS=$((FAILED_TESTS + 1))
+                FAILED_FILES="$FAILED_FILES $file"
+                continue
+              fi
+              # Warning if in /assignments directory
+              if [[ "$file" == assignments/* ]]; then
+                echo "::warning file=$file::Front matter is recommended for assignment files"
+                echo "Skipping $file (front matter not required)"
+                continue
+              fi
+              # Silent skip for other directories
+              echo "Skipping $file (front matter not required)"
+              continue
+            fi
+            
             # Check if file has valid test configuration using Python tool
             if ! python3 tools/get-database-path.py "$file" > /dev/null 2>&1; then
               echo "Skipping $file (no valid test configuration)"

@@ -1,37 +1,72 @@
-# Code examples
+---
+# markdownlint-disable
+# vale off
 
-**Author:** \<replace with your name\>
+layout: default
+description: <REPLACE WITH description of this API endpoint>
+topic_type: reference
+test:
+  test_apps:
+    - json-server@0.17.4
+  server_url: localhost:3000
+  local_database: /api/to-do-db-source.json
+  testable:
+    - GET example / 200
+    - POST example / 201
+# vale  on
+# markdownlint-enable
+---
 
-## `cURL` example
+# {REPLACE WITH endpoint name}
 
-\<replace with a description of the example\>
+**Author:** `<REPLACE WITH your name>`
 
-### `cURL` command
+Brief description of what this endpoint does.
 
-```shell
-<replace with the command line used>
+## `GET` example
+
+Description of the `GET` request and what it returns.
+
+### `GET` example request
+
+```bash
+curl http://{server_url}/users/1
 ```
 
-### `cURL` response
+### `GET` example response
 
-```shell
-<replace with the response>
+```json
+{
+  "id": 1,
+  "firstName": "Ferdinand",
+  "lastName": "Smith",
+  "email": "f.smith@example.com"
+}
 ```
 
-## Postman example
+## `POST` example
 
-\<replace with a description of the example\>
+Description of the `POST` request and what it creates.
 
-### Request
+### `POST` example request
 
-**Method**:
-
-```shell
-<replace with the request used for this example>
+```bash
+curl -X POST http://{server_url}/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "jane.doe@example.com"
+  }'
 ```
 
-### Postman response
+### `POST` example response
 
-```shell
-<replace with the response>
+```json
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "email": "jane.doe@example.com",
+  "id": 5
+}
 ```

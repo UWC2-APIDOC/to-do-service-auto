@@ -1,5 +1,6 @@
 <!-- vale off -->
 <!-- markdownlint-disable -->
+<!-- front matter not required -->
 # About Markdown
 
 Markdown is **really cool**. Don't believe me yet? Well, then let me tell you about some advantages of Markdown.

@@ -1,5 +1,6 @@
 <!-- vale off -->
 <!-- markdownlint-disable -->
+<!-- front matter not required -->
 # H1 Thoughts about Markdown
 
 Markdown is a markup language created by John Gruber in 2004. He designed it to be an easy-to-understand markup language.

@@ -1,5 +1,6 @@
 <!-- vale off -->
 <!-- markdownlint-disable -->
+<!-- front matter not required -->
 # **Pros and Cons of Markdown**
 
 Markdown , a widely used docs-as-code language, has many perks along as many limitations. Below are the pros and cons of using Markdown versus a rich text editor or word processor.

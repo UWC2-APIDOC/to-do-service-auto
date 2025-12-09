@@ -1,5 +1,6 @@
 <!-- vale off -->
 <!-- markdownlint-disable -->
+<!-- front matter not required -->
 # Markdown guide: pros, cons, and tips
 
 ## Advantages :sparkles:

@@ -1,5 +1,6 @@
 <!-- vale off -->
 <!-- markdownlint-disable -->
+<!-- front matter not required -->
 # Markdown: Advantages, Limitations, and Tips for New Writers
 Markdown is a lightweight markup language that allows writers to create formatted text using plain text syntax. It is widely used for documentation because of its simplicity, readability, and compatibility with version control systems.
 ---

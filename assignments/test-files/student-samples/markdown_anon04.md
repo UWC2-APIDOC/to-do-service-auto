@@ -1,5 +1,6 @@
 <!-- vale off -->
 <!-- markdownlint-disable -->
+<!-- front matter not required -->
 # Getting Started with Markdown for Technical Writers
 
 Markdown is a markup language that allows technical writers and developers to collaborate on files, develop documentation, and coordinate changes in the same environment while using the same tools. It is relatively simple to learn and can help streamline the product development process for your teams.

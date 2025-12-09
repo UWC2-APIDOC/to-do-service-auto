@@ -1,5 +1,6 @@
 <!-- vale off -->
 <!-- markdownlint-disable -->
+<!-- front matter not required -->
 # Getting started with Markdown: a guide for writers
 
 Markdown is a lightweight markup language widely used in technical documentation that uses plain-text symbols to show formatting, such as headings, lists, and links.

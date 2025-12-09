@@ -1,5 +1,6 @@
 <!-- vale off -->
 <!-- markdownlint-disable -->
+<!-- front matter not required -->
 # Code Examples in API Documentation
 
 ## Advantages of Code Examples

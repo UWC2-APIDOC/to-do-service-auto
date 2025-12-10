@@ -4,7 +4,9 @@ Git
 GitHub
 GitHub Desktop
 Markdown
+MarkdownLint
 Postman
+pytest
 [R|r]ebased?
 [R|r]ebasing
 [R|r]epos?

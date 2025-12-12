@@ -3,16 +3,20 @@
 Shared utilities for documentation testing tools.
 
 This module provides common functions for:
-- Parsing YAML frontmatter from markdown files
+- Parsing YAML front matter from markdown files
 - Reading markdown files with error handling
-- Extracting test configuration from frontmatter
+- Extracting test configuration from front matter
 - Unified logging with GitHub Actions annotation support
 """
 
 import re
-import yaml
 from pathlib import Path
 from typing import Optional, Dict, Tuple, Any
+
+import yaml
+
+# Import help URLs from centralized config
+from help_urls import HELP_URLS
 
 
 def parse_front_matter(content: str) -> Optional[Dict[str, Any]]:
@@ -23,7 +27,7 @@ def parse_front_matter(content: str) -> Optional[Dict[str, Any]]:
         content: Full markdown file content as string
         
     Returns:
-        Dictionary of frontmatter metadata, or None if not found/invalid
+        Dictionary of front matter metadata, or None if not found/invalid
         
     Example:
         >>> content = "---\\nlayout: default\\n---\\n# Heading"
@@ -52,6 +56,12 @@ def read_markdown_file(filepath: Path) -> Optional[str]:
     Returns:
         File content as string, or None if error occurred
         
+    Example:
+        >>> from pathlib import Path
+        >>> content = read_markdown_file(Path('README.md'))
+        >>> if content:
+        ...     print(f"Read {len(content)} characters")
+        
     Note:
         Errors are logged but not raised. Caller should check for None.
     """
@@ -73,7 +83,7 @@ def get_test_config(metadata: Dict[str, Any]) -> Dict[str, Any]:
     Extract test configuration from front matter metadata.
     
     Args:
-        metadata: Parsed frontmatter dictionary
+        metadata: Parsed front matter dictionary
         
     Returns:
         Test configuration dictionary, or empty dict if not present
@@ -133,7 +143,7 @@ def log(message: str,
     Print a message to console and optionally output GitHub Actions annotation.
     
     This function provides unified logging for all documentation test tools.
-    It supports console output with icons and optional GitHub Actions annotations
+    It supports console output with labels and optional GitHub Actions annotations
     based on message severity and filtering level.
     
     Args:
@@ -153,7 +163,7 @@ def log(message: str,
             - 'error': Output only error annotations
     
     Console output:
-        Always outputs to console with appropriate icon prefix.
+        Always outputs to console with appropriate label prefix.
         
     GitHub Actions annotation output:
         Only outputs if use_actions=True AND message level meets threshold:

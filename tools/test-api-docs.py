@@ -26,7 +26,7 @@ import sys
 import argparse
 from pathlib import Path
 
-from doc_test_utils import read_markdown_file, parse_front_matter, log
+from doc_test_utils import read_markdown_file, parse_front_matter, log, HELP_URLS
 from schema_validator import validate_front_matter_schema
 
 
@@ -40,9 +40,9 @@ def parse_testable_entry(entry):
         entry: Testable entry string from front matter
         
     Returns:
-        tuple: (example_name, expected_codes)
+        tuple: (example_name, expected_codes) or (None, None) on error
         
-    Examples:
+    Example:
         >>> parse_testable_entry("GET example")
         ('GET example', [200])
         >>> parse_testable_entry("POST example / 201")
@@ -50,15 +50,26 @@ def parse_testable_entry(entry):
         >>> parse_testable_entry("PUT example / 200,204")
         ('PUT example', [200, 204])
     """
-    parts = entry.split('/')
-    example_name = parts[0].strip()
-    
-    if len(parts) > 1:
-        expected_codes = [int(code.strip()) for code in parts[1].split(',')]
-    else:
-        expected_codes = [200]
-    
-    return example_name, expected_codes
+    try:
+        parts = entry.split('/')
+        example_name = parts[0].strip()
+        
+        if not example_name:
+            return None, None
+        
+        if len(parts) > 1:
+            codes_str = parts[1].strip()
+            if not codes_str:
+                return None, None
+            expected_codes = [int(code.strip()) for code in codes_str.split(',') if code.strip()]
+            if not expected_codes:
+                return None, None
+        else:
+            expected_codes = [200]
+        
+        return example_name, expected_codes
+    except (ValueError, IndexError):
+        return None, None
 
 
 def extract_curl_command(content, server_url, example_name):
@@ -72,6 +83,17 @@ def extract_curl_command(content, server_url, example_name):
         
     Returns:
         str: The curl command, or None if not found
+
+    Example:
+        >>> content = '''
+        ... ### GET example request
+        ... ```bash
+        ... curl {server_url}/api/users
+        ... ```
+        ... '''
+        >>> cmd = extract_curl_command(content, 'http://localhost:3000', 'GET example')
+        >>> print(cmd)
+        curl -i http://localhost:3000/api/users
     """
     # Escape the example name but allow backticks around words
     # Pattern like "GET example" should match "`GET` example", "GET `example`", or "`GET` `example`"
@@ -138,6 +160,17 @@ def extract_expected_response(content, example_name):
         
     Returns:
         dict: Parsed JSON response, or None if not found
+
+    Example:
+        >>> content = '''
+        ... ### GET example response
+        ... ```json
+        ... {"users": [{"id": 1, "name": "Alice"}]}
+        ... ```
+        ... '''
+        >>> response = extract_expected_response(content, 'GET example')
+        >>> print(response['users'][0]['name'])
+        Alice
     """
     # Similar flexible pattern as curl extraction
     escaped_name = re.escape(example_name)
@@ -196,6 +229,13 @@ def execute_curl(curl_command):
         
     Returns:
         tuple: (status_code, headers, body) or (None, None, error_message)
+
+    Example:
+        >>> status, headers, body = execute_curl('curl -i http://localhost:3000/api/users')
+        >>> if status:
+        ...     print(f"Status: {status}")
+        ...     data = json.loads(body)
+        Status: 200
     """
     try:
         # Run curl with -i to get headers
@@ -253,6 +293,15 @@ def compare_json_objects(actual, expected, path=""):
         
     Returns:
         tuple: (are_equal, differences_list)
+
+    Example:
+        >>> expected = {"name": "Alice", "age": 30}
+        >>> actual = {"name": "Alice", "age": 31}
+        >>> are_equal, diffs = compare_json_objects(actual, expected)
+        >>> print(f"Equal: {are_equal}")
+        >>> print(f"Differences: {diffs}")
+        Equal: False
+        Differences: ['age: Value mismatch - expected 30, got 31']
     """
     differences = []
     
@@ -311,11 +360,22 @@ def test_example(content, test_config, example_name, expected_codes, file_path, 
         
     Returns:
         bool: True if test passed, False otherwise
+
+    Example:
+        >>> test_config = {'server_url': 'http://localhost:3000'}
+        >>> passed = test_example(
+        ...     content=doc_content,
+        ...     test_config=test_config,
+        ...     example_name='GET example',
+        ...     expected_codes=[200],
+        ...     file_path='docs/api.md',
+        ...     use_actions=False,
+        ...     action_level='warning'
+        ... )
+        >>> print(f"Test {'passed' if passed else 'failed'}")
     """
-    see_also_the_log = " See the 'Test changed documentation files' entry in the log for more info."
-    
-    log(f"Testing: {example_name}")
-    log(f"  -- Expected status: {', '.join(map(str, expected_codes))}")
+    log(f"Testing: {example_name}", "info")
+    log(f"  Expected status: {', '.join(map(str, expected_codes))}", "info")
     
     # Extract curl command
     # get server_url specified in test config, default to empty string
@@ -323,28 +383,28 @@ def test_example(content, test_config, example_name, expected_codes, file_path, 
     server_url = test_config.get('server_url', '')
     curl_cmd = extract_curl_command(content, server_url, example_name)
     if not curl_cmd:
-        log(f"  -- Could not find example '{example_name}' or it is not formatted correctly", 
+        log(f"Could not find example '{example_name}' or it is not formatted correctly", 
             "warning", file_path, None, use_actions, action_level)
-        log(f"  -- Expected format: '### {example_name} request' section with bash code block")
-        log("   -- For help, visit: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Example-Format")
+        log(f"Expected format: '### {example_name} request' section with bash code block", "info")
+        log(f"📖 Help: {HELP_URLS['example_format']}", "info")
         return False
     
-    log(f"  -- Command: {curl_cmd[:80]}...")
+    log(f"  Command: {curl_cmd[:80]}...", "info")
     
     # Execute curl command
     status_code, headers, body = execute_curl(curl_cmd)
     
     if status_code is None:
-        log(f"  -- Example '{example_name}' failed: {body}", 
+        log(f"Example '{example_name}' failed: {body}", 
             "error", file_path, None, use_actions, action_level)
         return False
     
-    log(f"  -- Status: {status_code}")
+    log(f"  Status: {status_code}", "info")
     
     # Validate status code
     if status_code not in expected_codes:
         expected_str = ' or '.join(map(str, expected_codes))
-        log(f"Example '{example_name}' failed: Expected HTTP {expected_str}, got {status_code}.", 
+        log(f"Example '{example_name}' failed; expected HTTP {expected_str}, got {status_code}", 
             "error", file_path, None, use_actions, action_level)
         return False
     
@@ -355,35 +415,35 @@ def test_example(content, test_config, example_name, expected_codes, file_path, 
         response_json = json.loads(body)
         log("  Valid JSON response received", "success")
     except json.JSONDecodeError:
-        log(f"  Example '{example_name}' failed: Response is not valid JSON", 
+        log(f"Example '{example_name}' failed: Response is not valid JSON", 
             "error", file_path, None, use_actions, action_level)
-        log(f"  Response: {body[:200]}")
+        log(f"  Response: {body[:200]}", "info")
         return False
     
     # Extract expected response
     expected_json = extract_expected_response(content, example_name)
     if expected_json is None:
-        log(f"  -- Could not find documented response for '{example_name}' or it is not formatted correctly", 
+        log(f"Could not find documented response for '{example_name}' or it is not formatted correctly", 
             "warning", file_path, None, use_actions, action_level)
-        log(f"  -- Expected format: '### {example_name} response' section with json code block")
-        log("   -- For help, visit: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Example-Format")
+        log(f"Expected format: '### {example_name} response' section with json code block", "info")
+        log(f"📖 Help: {HELP_URLS['example_format']}", "info")
         return False
     
     # Compare actual vs expected
     are_equal, differences = compare_json_objects(response_json, expected_json)
     
     if are_equal:
-        log("  -- Response matches documentation exactly", "success")
-        log(f"  -- ✓ Example '{example_name}' PASSED", "success")
+        log("  Response matches documentation exactly", "success")
+        log(f"  ✓ Example '{example_name}' PASSED", "success")
         return True
     else:
-        log(f"  -- Example '{example_name}' failed: Response does not match documentation", 
+        log(f"Example '{example_name}' failed: Response does not match documentation", 
             "error", file_path, None, use_actions, action_level)
-        log(f"  -- Differences found ({len(differences)}):")
+        log(f"  Differences found: {len(differences)}", "info")
         for diff in differences[:10]:  # Show first 10 differences
-            log(f"    • {diff}")
+            log(f"    • {diff}", "info")
         if len(differences) > 10:
-            log(f"  ... and {len(differences) - 10} more differences")
+            log(f"  ... and {len(differences) - 10} more differences", "info")
         return False
 
 
@@ -399,24 +459,34 @@ def test_file(file_path, schema_path, use_actions=False, action_level="warning")
         
     Returns:
         tuple: (total_tests, passed_tests, failed_tests)
+
+    Example:
+        >>> total, passed, failed = test_file(
+        ...     'docs/api/users.md',
+        ...     '.github/schemas/front-matter-schema.json',
+        ...     use_actions=False,
+        ...     action_level='warning'
+        ... )
+        >>> print(f"Ran {total} tests: {passed} passed, {failed} failed")
+        Ran 3 tests: 3 passed, 0 failed
     """
-    log(f"\n{'#'*60}")
-    log(f"# Testing file: {file_path}")
-    log(f"{'#'*60}")
+    log(f"\n{'='*60}", "info")
+    log(f"Testing file: {file_path}", "info")
+    log(f"{'='*60}", "info")
     
     # Read file content using shared utility
     content = read_markdown_file(Path(file_path))
     if content is None:
-        log(f"  File not found or unreadable: {file_path}", 
+        log(f"File not found or unreadable: {file_path}", 
             "error", file_path, None, use_actions, action_level)
         return 0, 0, 0
     
     # Extract and parse front matter
     metadata = parse_front_matter(content)
     if not metadata:
-        log("No front matter found", "error", file_path, None, use_actions, action_level)
-        log("All documentation files must have YAML front matter between --- delimiters")
-        log("📖 Documentation: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Frontmatter-Format")
+        log("Front matter is required for all documentation files", 
+            "error", file_path, None, use_actions, action_level)
+        log(f"📖 Help: {HELP_URLS['front_matter']}", "info")
         return 0, 0, 0
     
     # Validate front matter against schema
@@ -425,26 +495,26 @@ def test_file(file_path, schema_path, use_actions=False, action_level="warning")
     )
     
     if not is_valid:
-        log("\n  ❌ Front matter validation failed. Fix errors before testing examples.", "error")
+        log("Front matter validation failed. Fix errors before testing examples", "error", file_path, None, use_actions, action_level)
         return 0, 0, 0
     
     if has_warnings:
-        log("\n  ⚠️  Front matter has warnings but is valid enough to continue", "warning")
+        log("Front matter has warnings but is valid enough to continue", "warning", file_path, None, use_actions, action_level)
     
     # Check if file has testable examples
     test_config = metadata.get('test', {})
     if not test_config:
-        log("  No test configuration found in front matter", "info")
+        log("No test configuration found in front matter", "info")
         return 0, 0, 0
     
     testable = test_config.get('testable', [])
     if not testable:
-        log("  No testable examples marked in front matter", "info")
+        log("No testable examples marked in front matter", "info")
         return 0, 0, 0
     
-    log(f"  Testable examples found: {len(testable)}")
+    log(f"Testable examples found: {len(testable)}", "info")
     for item in testable:
-        log(f"  - {item}")
+        log(f"  - {item}", "info")
     
     # Test each example
     total_tests = len(testable)
@@ -453,6 +523,11 @@ def test_file(file_path, schema_path, use_actions=False, action_level="warning")
     
     for testable_entry in testable:
         example_name, expected_codes = parse_testable_entry(testable_entry)
+        
+        if example_name is None:
+            log(f"Invalid testable entry format: {testable_entry}", "error", file_path, None, use_actions, action_level)
+            failed_tests += 1
+            continue
         
         if test_example(content, test_config, example_name, expected_codes, file_path, use_actions, action_level):
             passed_tests += 1
@@ -511,18 +586,18 @@ Examples:
     )
     
     # Print summary
-    log(f"TEST SUMMARY: {args.file}")
-    log(f"  Total tests: {total}")
+    log(f"TEST SUMMARY: {args.file}", "info")
+    log(f"  Total tests: {total}", "info")
     if passed > 0:
-        log(f"    Passed: {passed}", "success")
+        log(f"  Passed: {passed}", "success")
     if failed > 0:
-        log(f"    Failed: {failed}", "success")
+        log(f"  Failed: {failed}", "error")
     
     # Exit with appropriate code
     if failed > 0:
         sys.exit(1)
     elif total == 0:
-        log("  No tests were run", "warning")
+        log("No tests were run", "warning")
         sys.exit(0)
     else:
         log("✓ All tests passed!", "success")

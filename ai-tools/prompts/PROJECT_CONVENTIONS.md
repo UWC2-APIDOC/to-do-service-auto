@@ -37,7 +37,7 @@ project-root/
 └── [other project directories]
 ```
 
-### Key principles
+### Key project principles
 
 **Separation of Concerns:**
 
@@ -175,6 +175,21 @@ For specifying output file/directory
 
 ## Logging Conventions
 
+### Core Messaging Philosophy
+
+The project uses a **dual-mode messaging system**:
+
+- **Console mode**: Human-readable messages with text labels
+- **GitHub Actions mode**: Same console output + machine-readable annotations
+
+### Key information logging principles
+
+- **Dual audience**: Messages serve both humans (console) and machines (annotations)
+- **Severity-based filtering**: Not everything becomes a GitHub annotation
+- **Context-rich errors**: Always include file paths and line numbers when available
+- **Progressive disclosure**: Info for all, annotations only for actionable items
+- **Consistency over cleverness**: Use text labels, not emojis or symbols
+
 ### Log Levels
 
 Use the shared `log()` function with standard levels:
@@ -185,52 +200,183 @@ from doc_test_utils import log
 log(message, level, file_path, line, use_actions, action_level)
 ```
 
-#### Level Definitions
+#### Level definitions
 
-**info** - Informational messages (console only):
+- **info** - Informational messages (console only):
+    - **Purpose**: Progress updates, status information
+    - **Console**: Yes
+    - **Annotation**: Never
+    - **When to use:**
+        - File counts and progress indicators
+        - Summary statistics
+        - Successful operations that aren't critical milestones
+        - Non-actionable status updates
 
-```python
-log("Processing 10 files...", "info")
-log("Found 3 exceptions", "info")
+        ```python
+        log("Processing 10 files...", "info")
+        log("Found 3 exceptions", "info")
+        log(f"[{idx}/{total}] Processing {filepath.name}", "info")
+        ```
+
+- **notice** - Notable information (console + annotation if action_level='all'):
+    - **Purpose**: Milestones and notable outcomes worth highlighting
+    - **Console**: Yes
+    - **Annotation**: Only if action_level='all'
+    - **When to use**:
+        - Completion confirmations
+        - "No issues found" messages
+        - Configuration detected
+        - Non-blocking observations
+
+        ```python
+        log("No exceptions found", "notice", file_path, None, use_actions, action_level)
+        log("Test completed successfully", "notice", file_path, None, use_actions, action_level)
+        ```
+
+- **warning** - Problems that don't prevent completion (console + annotation):
+    - **Purpose**: Non-blocking issues and recommendations
+    - **Console**: Yes
+    - **Annotation**: If action_level ≤ 'warning' (default)
+    - **When to use**:
+        - Linter exceptions found (Vale, markdownlint)
+        - Deprecated syntax detected
+        - Missing optional fields
+        - Recommendations (not requirements)
+        - Issues that suggest improvement but don't block
+
+        ```python
+        log("Deprecated syntax detected", "warning", file_path, line_num, use_actions, action_level)
+        log("Missing optional field", "warning", file_path, line_num, use_actions, action_level)
+        log(f"Vale exception: {exc['rule']}", "warning", str(filepath), exc['line'], True, action_level)
+        ```
+
+- **error** - Problems that prevent completion (console + annotation):
+    - **Purpose**: Blocking issues that must be fixed
+    - **Console**: Yes
+    - **Annotation**: Always (when use_actions=True)
+    - **When to use**:
+        - Invalid syntax (YAML, JSON)
+        - Required file not found
+        - Required fields missing
+        - Test failures
+        - Validation failures that block merge
+
+        ```python
+        log("Invalid YAML syntax", "error", file_path, line_num, use_actions, action_level)
+        log("File not found", "error", file_path, None, use_actions, action_level)
+        log("Test failed: status code mismatch", "error", file_path, line, use_actions, action_level)
+        ```
+
+- **success** - Success confirmations (console only):
+    - **Purpose**: Positive outcome confirmations
+    - **Console**: Yes
+    - **Annotation**: Never
+    - **When to use**:
+        - Final test results
+        - Completion of major operations
+        - Explicit success confirmations
+
+        ```python
+        log("All tests passed", "success")
+        log("File processed successfully", "success")
+        ```
+
+#### Choosing the right level
+
+Use this decision tree:
+
+```text
+Is this just progress/status information?
+└─ YES → INFO
+
+Is this a notable milestone worth highlighting?
+└─ YES → NOTICE
+
+Does this indicate a problem that doesn't block completion?
+└─ YES → WARNING
+
+Does this prevent successful completion?
+└─ YES → ERROR
+
+Is this confirming successful completion?
+└─ YES → SUCCESS
 ```
 
-**notice** - Notable information (console + annotation if `action_level='all'`):
+#### Message format patterns
 
-```python
-log("No exceptions found", "notice", file_path, None, use_actions, action_level)
-log("Test completed successfully", "notice", file_path, None, use_actions, action_level)
+##### Pattern 1: state + context
+
+```text
+"<What happened>; found <actual>, expected <expected>"
 ```
 
-**warning** - Problems that don't prevent completion (console + annotation):
+Examples:
 
 ```python
-log("Deprecated syntax detected", "warning", file_path, line_num, use_actions, action_level)
-log("Missing optional field", "warning", file_path, line_num, use_actions, action_level)
+pythonlog("PR must contain exactly one commit; found 3", "error", ...)
+log("Invalid status code; got 404, expected 200", "error", ...)
 ```
 
-**error** - Problems that prevent completion (console + annotation):
+##### Pattern 2: object + issue + location
+
+```text
+"<Object>: <Issue> on line <N>"
+```
+
+Examples:
 
 ```python
-log("Invalid YAML syntax", "error", file_path, line_num, use_actions, action_level)
-log("File not found", "error", file_path, None, use_actions, action_level)
+log(f"Vale exception: {rule} on line {line_num}", "warning", ...)
+log(f"markdownlint exception: {rule} on line {line_num}", "warning", ...)
 ```
 
-**success** - Success confirmations (console only):
+##### Pattern 3: Progress indicator
+
+```text
+"[<current>/<total>] <Action> <object>"
+```
+
+Examples:
 
 ```python
-log("All tests passed", "success")
-log("File processed successfully", "success")
+log(f"[{idx}/{total}] Processing {filename}", "info")
 ```
 
-### Output Format
+##### Pattern 4: Imperative requirement
 
-**Console Format:**
+```text
+
+"<Object> <requirement verb> <requirement>"
+```
+
+Examples:
+
+```python
+log("Front matter is required for files in /docs directory", "error", ...)
+log("Only files in /docs/ can be modified", "error", ...)
+```
+
+##### Pattern 5: Suggestion/Recommendation
+
+```text
+"<Observation>. Consider <action>."
+```
+
+Examples:
+
+```python
+log("PR branch not up to date. Consider rebasing.", "warning", ...)
+```
+
+##### Output Format
+
+**Console Format**:
 
 ```text
 LEVEL: message
 ```
 
-**Examples:**
+Examples:
 
 ```text
 INFO: Processing file.md
@@ -239,13 +385,20 @@ ERROR: Invalid YAML in front matter
 SUCCESS: All tests passed
 ```
 
-**GitHub Actions Format:**
+**Important**: Use text-only labels (INFO, WARNING, ERROR), not emojis or symbols:
+
+- ✅ Better log file compatibility
+- ✅ Easier to grep/search
+- ✅ Universal terminal support
+- ✅ Consistent with GitHub Actions format
+
+##### GitHub actions format
 
 ```text
 ::level file=path,line=num::message
 ```
 
-**Examples:**
+Examples:
 
 ```text
 ::notice file=test.md::No exceptions found
@@ -253,23 +406,221 @@ SUCCESS: All tests passed
 ::error file=test.md,line=5::Invalid YAML
 ```
 
-### When to Use Each Level
+#### When to use each level
 
-| Level | Use When | Creates Annotation? |
-| ------- | ---------- | --------------------- |
+| Level | Use when: | Creates annotation? |
+| ----- | -------- | ------------------- |
 | `info` | Progress updates, counts, informational | Never |
 | `notice` | Notable events, completion messages | If `action_level='all'` |
-| `warning` | Fixable issues, deprecations | If `action_level` ≤ `warning` |
+| `warning` | Fixable issues, deprecations | If `action_level ≤ warning` |
 | `error` | Blocking issues, failures | Always when `use_actions=True` |
 | `success` | Confirmations, final results | Never |
 
----
+##### Error context requirements
 
-## GitHub Actions Integration
+Always provide maximum context in error messages:
 
-### Workflow Structure
+###### Minimal
 
-Standard workflow for tool testing:
+```python
+log("Test failed", "error")
+```
+
+###### Better
+
+```python
+log("Test failed: docs/api.md", "error")
+```
+
+###### Best (Required Standard)
+
+``` python
+log("Test failed: status code mismatch", 
+    "error",
+    "docs/api.md",     # file_path
+    42,                # line number
+    True,              # use_actions
+    "error")           # action_level
+```
+
+Output example:
+
+```text
+ERROR: Test failed: status code mismatch
+::error file=docs/api.md,line=42::Test failed: status code mismatch
+```
+
+### Multi-File processing
+
+#### Progress indicators
+
+**For small file counts (< 5):**
+
+```python
+for file in files:
+    log(f"Processing {file.name}", "info")
+```
+
+**For medium file counts (5-20):**
+
+```python
+for idx, file in enumerate(files, 1):
+    log(f"[{idx}/{total}] Processing {file.name}", "info")
+```
+
+#### Summary reporting
+
+Always provide summary for multiple files:
+
+```python
+log(f"Processed {total} files: {passed} passed, {failed} failed", "info")
+```
+
+**Conditional detail:**
+
+```python
+if total > 1:
+    log(f"Summary: {total_exceptions} exceptions across {total} files", "info")
+```
+
+### Help links
+
+Every error should include a help link for users to get more information.
+
+#### Current pattern
+
+**In workflows:**
+
+```bash
+echo "Help: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Topic"
+```
+
+**In Python tools:**
+
+```python
+log("For help, visit: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki/Topic")
+```
+
+**Recommended Pattern (Future):**
+
+Use environment variables in workflows:
+
+```yaml
+env:
+  WIKI_BASE: https://github.com/UWC2-APIDOC/to-do-service-auto/wiki
+
+steps:
+  - run: |
+      echo "📖 Help: $WIKI_BASE/Topic"
+```
+
+Use constants in Python:
+
+```python
+WIKI_BASE_URL = "https://github.com/UWC2-APIDOC/to-do-service-auto/wiki"
+
+log(f"For help, visit: {WIKI_BASE_URL}/Topic")
+```
+
+### Anti-patterns
+
+**❌ Don't use bare print() in tools:**
+
+```python
+# Bad
+print("Error processing file")
+
+# Good
+log("Error processing file", "error", filepath)
+```
+
+**❌ Don't mix message styles:**
+
+```python
+# Bad - inconsistent
+log("ERROR: File not found")  # Manual prefix
+log("File missing", "error")  # Automatic prefix
+
+# Good - consistent
+log("File not found", "error")
+log("File missing", "error")
+```
+
+**❌ Don't create annotations for progress:**
+
+```python
+# Bad
+log("Processing file 3 of 10", "info", file, None, True, "all")
+
+# Good
+log("Processing file 3 of 10", "info")  # Console only
+```
+
+**❌ Don't omit context from errors:**
+
+```python
+# Bad
+log("Invalid syntax", "error")
+
+# Good
+log("Invalid YAML syntax in front matter", "error", filepath, line)
+```
+
+**❌ Don't use emojis in console labels:**
+
+```python
+# Bad
+labels = {'error': '❌', 'warning': '⚠️'}
+
+# Good
+labels = {'error': 'ERROR', 'warning': 'WARNING'}
+```
+
+### Workflow-specific patterns
+
+#### Step Summaries (GitHub Actions)
+
+Use markdown formatting for workflow summaries:
+
+```bash
+echo "## Section Title" >> $GITHUB_STEP_SUMMARY
+echo "" >> $GITHUB_STEP_SUMMARY
+echo "- Item: value" >> $GITHUB_STEP_SUMMARY
+
+if [ "$status" == "success" ]; then
+  echo "✅ All tests passed" >> $GITHUB_STEP_SUMMARY
+else
+  echo "❌ Tests failed" >> $GITHUB_STEP_SUMMARY
+fi
+```
+
+**Note**: Emojis are acceptable in step summaries (markdown context), but not in console labels.
+
+### Separator Lines
+
+**Python console output:**
+
+```python
+print("\n" + "="*60)
+print("TEST: function_name()")
+print("="*60)
+```
+
+**Workflow output:**
+
+```bash
+echo ""
+echo "=================================================="
+echo "Testing: $file"
+echo "=================================================="
+Standard: Use 60 characters for Python, 50-60 for workflows
+```
+
+### GitHub actions integration
+
+#### Workflow Structure
+
+**Standard workflow for tool testing:**
 
 ```yaml
 name: Tool Test Workflow
@@ -284,7 +635,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -299,16 +650,16 @@ jobs:
           python3 tools/tool-name.py --action error test-file.md
 ```
 
-### Annotation Best Practices
+#### Annotation Best Practices
 
-**Do:**
+**Do**:
 
 - ✅ Provide specific file and line numbers
 - ✅ Include actionable information
 - ✅ Use appropriate severity levels
 - ✅ Filter by action level to avoid noise
 
-**Don't:**
+**Don't**:
 
 - ❌ Create duplicate annotations for the same issue
 - ❌ Annotate informational messages
@@ -320,6 +671,7 @@ jobs:
 ```python
 log("Vale exception: Style.Rule on line 15", 
     "warning", "docs/api.md", 15, True, "warning")
+
 # Creates: ::warning file=docs/api.md,line=15::Vale exception: Style.Rule
 ```
 
@@ -328,10 +680,11 @@ log("Vale exception: Style.Rule on line 15",
 ```python
 log("Processing file 3 of 10...", 
     "info", "docs/api.md", None, True, "all")
+
 # Don't annotate progress messages
 ```
 
-### Exit Codes
+**Exit Codes**
 
 Tools should use standard exit codes:
 
@@ -340,12 +693,14 @@ Tools should use standard exit codes:
 sys.exit(0)
 
 # General failure
+
 sys.exit(1)
 
 # Specific error codes (optional)
+
 sys.exit(2)  # Invalid arguments
 sys.exit(3)  # File not found
-```
+###
 
 ---
 

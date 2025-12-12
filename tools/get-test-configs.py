@@ -1,253 +1,221 @@
 #!/usr/bin/env python3
 """
-Group markdown files by test configuration.
+Group markdown files by their test configuration.
 
-This utility scans markdown files for test configurations in their front matter
-and groups them by identical (test_apps, server_url, local_database) properties.
-This allows GitHub Actions workflows to efficiently run tests by starting each
-unique server configuration once and testing all files that use it.
+This script parses front matter from multiple markdown files and groups them
+by their test configuration (test_apps, server_url, local_database) for batch
+testing. Files without valid test configuration are skipped.
 
 Usage:
-    get-test-configs.py <file1.md> [file2.md ...] [--action [LEVEL]] [--output FORMAT]
-
-Arguments:
-    files: One or more markdown files to process
-    --action: Optional flag to output GitHub Actions annotations
-              Optional LEVEL: all, warning (default), error
-    --output: Output format (json or shell, default: json)
+    get-test-configs.py --output <format> <file1> [file2 ...]
 
 Examples:
-    get-test-configs.py docs/api/*.md
-    get-test-configs.py docs/api/*.md --output json
-    get-test-configs.py docs/api/*.md --output shell
-    get-test-configs.py --action docs/api/*.md
+    # JSON output
+    python3 get-test-configs.py --output json docs/*.md
+    
+    # Shell variables output
+    python3 get-test-configs.py --output shell docs/*.md
+    
+    # Use in workflow
+    eval "$(python3 tools/get-test-configs.py --output shell docs/*.md)"
+    echo $GROUP_1_FILES
+    
+Exit Codes:
+    0: Success (even if no testable files found)
+    1: Error occurred
 """
 
 import sys
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
+from typing import List, Dict, Tuple, Any
 
-from doc_test_utils import read_markdown_file, parse_front_matter, get_server_database_key, log
+# Import shared utilities
+from doc_test_utils import (
+    read_markdown_file,
+    parse_front_matter,
+    get_server_database_key
+)
+import help_urls
 
 
-def group_files_by_config(filepaths: List[Path], use_actions: bool = False, 
-                         action_level: str = "warning") -> Dict[Tuple, List[str]]:
+def group_files_by_config(filepaths: List[Path]) -> Dict[Tuple, List[str]]:
     """
     Group files by their test configuration.
     
     Args:
-        filepaths: List of markdown file paths to process
-        use_actions: Whether to output GitHub Actions annotations
-        action_level: Minimum severity level for annotations
+        filepaths: List of markdown file paths
         
     Returns:
-        Dictionary mapping (test_apps, server_url, local_database) tuples to file lists
+        Dictionary mapping config tuples to file lists
+        Config tuple: (test_apps, server_url, local_database)
         
     Example:
-        >>> groups = group_files_by_config([Path('api1.md'), Path('api2.md')])
-        >>> for config, files in groups.items():
-        ...     print(f"Config: {config}")
-        ...     print(f"Files: {files}")
+        >>> files = [Path('file1.md'), Path('file2.md')]
+        >>> groups = group_files_by_config(files)
+        >>> len(groups) >= 0
+        True
     """
-    groups: Dict[Tuple, List[str]] = {}
-    skipped_files: List[str] = []
-    error_files: List[str] = []
+    groups = {}
+    skipped_files = []
     
     for filepath in filepaths:
-        # Read file
+        # Read and parse file
         content = read_markdown_file(filepath)
         if content is None:
-            error_files.append(str(filepath))
-            log(f"Skipping {filepath.name}: Unable to read file",
-                "error", str(filepath), None, use_actions, action_level)
+            skipped_files.append((str(filepath), "Unable to read file"))
             continue
         
-        # Parse front matter
         metadata = parse_front_matter(content)
         if metadata is None:
-            skipped_files.append(str(filepath))
-            log(f"Skipping {filepath.name}: No front matter found",
-                "notice", str(filepath), None, use_actions, action_level)
+            skipped_files.append((str(filepath), "No valid front matter"))
             continue
         
-        # Check for test configuration
-        test_config = metadata.get('test', {})
-        if not test_config:
-            skipped_files.append(str(filepath))
-            log(f"Skipping {filepath.name}: No test configuration",
-                "notice", str(filepath), None, use_actions, action_level)
+        # Get test configuration using shared utility
+        test_apps, server_url, local_database = get_server_database_key(metadata)
+        
+        # Skip files without local_database (required field)
+        if local_database is None:
+            skipped_files.append((str(filepath), "Missing required field 'local_database'"))
             continue
         
-        # Get configuration key
-        config_key = get_server_database_key(metadata)
+        # Create config tuple for grouping
+        config_key = (test_apps, server_url, local_database)
         
-        # Check if configuration is complete
-        test_apps, server_url, local_database = config_key
-        if not test_apps or not server_url or not local_database:
-            skipped_files.append(str(filepath))
-            missing = []
-            if not test_apps:
-                missing.append("test_apps")
-            if not server_url:
-                missing.append("server_url")
-            if not local_database:
-                missing.append("local_database")
-            
-            log(f"Skipping {filepath.name}: Incomplete test config (missing: {', '.join(missing)})",
-                "warning", str(filepath), None, use_actions, action_level)
-            continue
-        
-        # Add to appropriate group
+        # Add file to group
         if config_key not in groups:
             groups[config_key] = []
         groups[config_key].append(str(filepath))
     
-    # Summary logging
-    total_files = len(filepaths)
-    grouped_files = sum(len(files) for files in groups.values())
-    
-    log(f"Processed {total_files} file(s)", "info")
-    log(f"Grouped {grouped_files} testable file(s) into {len(groups)} configuration(s)", "info")
-    
+    # Report skipped files to stderr (doesn't interfere with stdout output)
     if skipped_files:
-        log(f"Skipped {len(skipped_files)} file(s) without complete test config", "info")
-    
-    if error_files:
-        log(f"Failed to read {len(error_files)} file(s)", "error", 
-            None, None, use_actions, action_level)
+        print(f"\nWarning: Skipped {len(skipped_files)} file(s) without valid test configuration:", file=sys.stderr)
+        for filepath, reason in skipped_files:
+            print(f"  - {filepath}: {reason}", file=sys.stderr)
+        print(f"\nNote: Files need front matter with 'test.local_database' field to be included.", file=sys.stderr)
+        print(f"See: {help_urls.HELP_URLS['front_matter']}\n", file=sys.stderr)
     
     return groups
 
 
-def output_json(groups: Dict[Tuple, List[str]]) -> None:
+def output_json(groups: Dict[Tuple, List[str]]) -> str:
     """
-    Output groups as JSON.
+    Format groups as JSON.
     
-    Format:
-    {
-        "groups": [
-            {
-                "test_apps": ["json-server@0.17.4"],
-                "server_url": "localhost:3000",
-                "local_database": "/api/test.json",
-                "files": ["file1.md", "file2.md"]
-            }
-        ]
-    }
+    Args:
+        groups: Dictionary of config tuples to file lists
+        
+    Returns:
+        JSON string
+        
+    Example:
+        >>> groups = {('app', 'url', 'db'): ['file1.md']}
+        >>> output = output_json(groups)
+        >>> 'groups' in output
+        True
     """
-    output = {"groups": []}
+    result = {"groups": []}
     
-    for config_key, files in groups.items():
-        test_apps, server_url, local_database = config_key
-        
-        # Convert test_apps back to list
-        test_apps_list = test_apps.split(',') if test_apps else []
-        
-        output["groups"].append({
-            "test_apps": test_apps_list,
+    for (test_apps, server_url, local_database), files in groups.items():
+        group = {
+            "test_apps": test_apps,
             "server_url": server_url,
             "local_database": local_database,
             "files": files
-        })
+        }
+        result["groups"].append(group)
     
-    print(json.dumps(output, indent=2))
+    return json.dumps(result, indent=2)
 
 
-def output_shell(groups: Dict[Tuple, List[str]]) -> None:
+def output_shell(groups: Dict[Tuple, List[str]]) -> str:
     """
-    Output groups as shell variables.
+    Format groups as shell variables.
     
-    Format for GitHub Actions:
-    GROUP_1_TEST_APPS=json-server@0.17.4
-    GROUP_1_SERVER_URL=localhost:3000
-    GROUP_1_LOCAL_DATABASE=/api/test.json
-    GROUP_1_FILES=file1.md file2.md
-    GROUP_COUNT=1
-    """
-    group_num = 0
-    
-    for config_key, files in groups.items():
-        group_num += 1
-        test_apps, server_url, local_database = config_key
+    Args:
+        groups: Dictionary of config tuples to file lists
         
-        print(f"GROUP_{group_num}_TEST_APPS={test_apps}")
-        print(f"GROUP_{group_num}_SERVER_URL={server_url}")
-        print(f"GROUP_{group_num}_LOCAL_DATABASE={local_database}")
-        print(f"GROUP_{group_num}_FILES={' '.join(files)}")
+    Returns:
+        Shell variable assignments
+        
+    Example:
+        >>> groups = {('app', 'url', 'db'): ['file1.md']}
+        >>> output = output_shell(groups)
+        >>> 'GROUP_1_' in output
+        True
+    """
+    lines = []
     
-    print(f"GROUP_COUNT={group_num}")
+    for idx, ((test_apps, server_url, local_database), files) in enumerate(groups.items(), 1):
+        lines.append(f"# Group {idx}")
+        lines.append(f'GROUP_{idx}_TEST_APPS="{test_apps or ""}"')
+        lines.append(f'GROUP_{idx}_SERVER_URL="{server_url or ""}"')
+        lines.append(f'GROUP_{idx}_LOCAL_DATABASE="{local_database or ""}"')
+        lines.append(f'GROUP_{idx}_FILES="{" ".join(files)}"')
+        lines.append("")
+    
+    lines.append(f"# Metadata")
+    lines.append(f"GROUP_COUNT={len(groups)}")
+    
+    return "\n".join(lines)
 
 
 def main():
+    """Main entry point."""
     parser = argparse.ArgumentParser(
         description='Group markdown files by test configuration.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s docs/api/*.md                    # JSON output
-  %(prog)s docs/api/*.md --output shell     # Shell variables
-  %(prog)s --action docs/api/*.md           # GitHub Actions mode
+  %(prog)s --output json docs/*.md
+  %(prog)s --output shell docs/*.md
+  
+  # Use in workflow with shell output
+  eval "$(%(prog)s --output shell docs/*.md)"
+  echo $GROUP_1_FILES
         """
     )
     
     parser.add_argument(
-        'files',
+        '--output',
         type=str,
-        nargs='+',
-        help='Markdown files to process'
-    )
-    
-    parser.add_argument(
-        '--action', '-a',
-        type=str,
-        nargs='?',
-        const='warning',
-        default=None,
-        choices=['all', 'warning', 'error'],
-        metavar='LEVEL',
-        help='Output GitHub Actions annotations. Optional LEVEL: all, warning (default), error'
-    )
-    
-    parser.add_argument(
-        '--output', '-o',
-        type=str,
-        default='json',
+        required=True,
         choices=['json', 'shell'],
-        help='Output format (default: json)'
+        help='Output format: json or shell variables'
+    )
+    
+    parser.add_argument(
+        'files',
+        nargs='+',
+        type=str,
+        help='Markdown files to process'
     )
     
     args = parser.parse_args()
     
-    # Convert file arguments to Path objects
+    # Convert file paths to Path objects
     filepaths = [Path(f) for f in args.files]
     
-    # Group files
-    use_actions = args.action is not None
-    groups = group_files_by_config(filepaths, use_actions, args.action or 'warning')
+    # Group files by configuration
+    groups = group_files_by_config(filepaths)
     
-    # Check if any groups were found
+    # Warn if no files were grouped (helpful for new users)
     if not groups:
-        log("No testable files found with complete test configurations",
-            "warning", None, None, use_actions, args.action or 'warning')
-        
-        # Output empty result
-        if args.output == 'json':
-            print(json.dumps({"groups": []}, indent=2))
-        else:
-            print("GROUP_COUNT=0")
-        
-        sys.exit(0)
+        print("\nWarning: No files with valid test configuration found.", file=sys.stderr)
+        print("Files must have front matter with 'test.local_database' field.", file=sys.stderr)
+        print(f"See: {help_urls.HELP_URLS['front_matter']}\n", file=sys.stderr)
     
-    # Output results
+    # Output in requested format
+    # Note: Data goes to stdout (clean for piping), errors/warnings to stderr
     if args.output == 'json':
-        output_json(groups)
-    else:
-        output_shell(groups)
+        print(output_json(groups))
+    elif args.output == 'shell':
+        print(output_shell(groups))
     
     sys.exit(0)
 
 
 if __name__ == "__main__":
     main()
+# End of file tools/get-test-configs.py

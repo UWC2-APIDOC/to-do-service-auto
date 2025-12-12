@@ -3,11 +3,12 @@
 Tests for get-test-configs.py
 
 Covers:
-- File grouping by identical test configurations
-- Handling files with missing/incomplete configs
-- Different output formats (JSON, shell)
-- Error handling for unreadable files
-- GitHub Actions annotation output
+- File grouping by configuration
+- Configuration matching logic
+- JSON and shell output formats
+- CLI argument validation
+- Integration with shared utilities
+- Files without config are skipped
 
 Run with:
     python3 test_get_test_configs.py
@@ -16,299 +17,445 @@ Run with:
 
 import sys
 import json
+import subprocess
+import importlib.util
 from pathlib import Path
-from io import StringIO
-from contextlib import redirect_stdout
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Get absolute path to parent directory (tools/)
+# __file__ = .../tools/tests/test_get_test_configs.py
+# parent = .../tools/tests/
+# parent.parent = .../tools/
+TOOLS_DIR = Path(__file__).resolve().parent.parent
 
-# Import the module functions directly - handle both direct run and pytest
-try:
-    # Try importing from parent directory (when run directly)
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("get_test_configs", 
-                                                   Path(__file__).parent.parent / "get-test-configs.py")
-    get_test_configs = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(get_test_configs)
-    from get_test_configs import group_files_by_config, output_json, output_shell
-except:
-    # Fallback for different execution contexts
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    # Load the module with hyphenated name
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("get_test_configs", 
-                                                   Path(__file__).parent.parent / "get-test-configs.py")
-    if spec and spec.loader:
-        get_test_configs = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(get_test_configs)
-        group_files_by_config = get_test_configs.group_files_by_config
-        output_json = get_test_configs.output_json
-        output_shell = get_test_configs.output_shell
+# Add tools directory to path FIRST so imports work
+sys.path.insert(0, str(TOOLS_DIR))
+
+# Now import the module with hyphens in filename
+SCRIPT_PATH = TOOLS_DIR / "get-test-configs.py"
+
+spec = importlib.util.spec_from_file_location(
+    "get_test_configs",
+    SCRIPT_PATH
+)
+get_configs_module = importlib.util.module_from_spec(spec)
+
+# Execute the module (this will now find doc_test_utils)
+spec.loader.exec_module(get_configs_module)
+
+# Get the functions we need
+group_files_by_config = get_configs_module.group_files_by_config
+output_json = get_configs_module.output_json
+output_shell = get_configs_module.output_shell
 
 
-def test_group_files_identical_config():
-    """Test grouping files with identical test configurations."""
+def test_group_single_file():
+    """Test grouping a single file."""
     print("\n" + "="*60)
-    print("TEST: group_files_by_config() - identical configs")
+    print("TEST: Group single file")
     print("="*60)
     
-    test_data_dir = Path(__file__).parent / "test_data"
+    test_dir = Path(__file__).parent / "test_data"
+    files = [test_dir / "valid_complete.md"]
     
-    # Files with same config should be grouped together
-    files = [
-        test_data_dir / "api_doc_same_config_1.md",
-        test_data_dir / "api_doc_same_config_2.md"
-    ]
-    
+    # Act
     groups = group_files_by_config(files)
     
-    assert len(groups) == 1, "Files with same config should form one group"
+    # Assert
+    assert len(groups) == 1, f"Should have 1 group, got {len(groups)}"
+    assert sum(len(files) for files in groups.values()) == 1, \
+        "Should have 1 file total"
     
-    config_key = list(groups.keys())[0]
-    test_apps, server_url, local_database = config_key
-    
-    assert test_apps == "json-server@0.17.4"
-    assert server_url == "localhost:3000"
-    assert local_database == "/api/test.json"
-    assert len(groups[config_key]) == 2, "Group should contain both files"
-    
-    print("  SUCCESS: Files with identical config grouped correctly")
-    print("  ✓ All group_files_by_config (identical) tests passed")
+    print(f"  ✓ Single file grouped correctly")
+    print(f"  ✓ Groups: {len(groups)}")
 
 
-def test_group_files_different_configs():
-    """Test grouping files with different test configurations."""
+def test_group_same_config():
+    """Test grouping files with identical configuration."""
     print("\n" + "="*60)
-    print("TEST: group_files_by_config() - different configs")
+    print("TEST: Group files with same configuration")
     print("="*60)
     
-    test_data_dir = Path(__file__).parent / "test_data"
-    
-    # Files with different configs should be in separate groups
+    test_dir = Path(__file__).parent / "test_data"
     files = [
-        test_data_dir / "api_doc_config_a.md",
-        test_data_dir / "api_doc_config_b.md"
+        test_dir / "valid_complete.md",
+        test_dir / "valid_same_as_complete.md"
     ]
     
+    # Act
     groups = group_files_by_config(files)
     
-    assert len(groups) == 2, "Files with different configs should form separate groups"
+    # Assert
+    assert len(groups) == 1, \
+        f"Files with same config should be in 1 group, got {len(groups)}"
+    group_files = list(groups.values())[0]
+    assert len(group_files) == 2, \
+        f"Group should contain 2 files, got {len(group_files)}"
     
-    # Each group should have one file
-    for files_in_group in groups.values():
-        assert len(files_in_group) == 1, "Each group should have one file"
-    
-    print("  SUCCESS: Files with different configs grouped separately")
-    print("  ✓ All group_files_by_config (different) tests passed")
+    print(f"  ✓ Files with same config grouped together")
+    print(f"  ✓ Group size: {len(group_files)}")
 
 
-def test_group_files_mixed_configs():
-    """Test grouping mix of files with matching and different configs."""
+def test_group_different_configs():
+    """Test grouping files with different configurations."""
     print("\n" + "="*60)
-    print("TEST: group_files_by_config() - mixed configs")
+    print("TEST: Group files with different configurations")
     print("="*60)
     
-    test_data_dir = Path(__file__).parent / "test_data"
-    
-    # Mix: 2 files same config, 2 files different configs
+    test_dir = Path(__file__).parent / "test_data"
     files = [
-        test_data_dir / "api_doc_same_config_1.md",
-        test_data_dir / "api_doc_same_config_2.md",
-        test_data_dir / "api_doc_config_a.md",
-        test_data_dir / "api_doc_config_b.md"
+        test_dir / "valid_complete.md",
+        test_dir / "valid_alternate_db.md"
     ]
     
+    # Act
     groups = group_files_by_config(files)
     
-    assert len(groups) == 3, "Should have 3 groups (1 pair + 2 singles)"
+    # Assert
+    assert len(groups) == 2, \
+        f"Files with different configs should be in 2 groups, got {len(groups)}"
     
-    # Find the group with 2 files
-    group_sizes = [len(files) for files in groups.values()]
-    assert 2 in group_sizes, "Should have one group with 2 files"
-    assert group_sizes.count(1) == 2, "Should have two groups with 1 file each"
+    for group_files in groups.values():
+        assert len(group_files) == 1, \
+            "Each group should have 1 file"
     
-    print("  SUCCESS: Mixed configs grouped correctly")
-    print("  ✓ All group_files_by_config (mixed) tests passed")
+    print(f"  ✓ Files with different configs in separate groups")
+    print(f"  ✓ Total groups: {len(groups)}")
 
 
-def test_skip_files_no_front_matter():
-    """Test handling files without front matter."""
+def test_group_mixed_valid_invalid():
+    """Test grouping mix of valid and invalid files."""
     print("\n" + "="*60)
-    print("TEST: group_files_by_config() - no front matter")
+    print("TEST: Group mix of valid and invalid files")
     print("="*60)
     
-    test_data_dir = Path(__file__).parent / "test_data"
-    fail_data_dir = Path(__file__).parent / "fail_data"
-    
-    # Mix valid and invalid files
+    test_dir = Path(__file__).parent
     files = [
-        test_data_dir / "api_doc_same_config_1.md",
-        fail_data_dir / "no_front_matter.md"
+        test_dir / "test_data" / "valid_complete.md",
+        test_dir / "fail_data" / "no_front_matter.md",
+        test_dir / "test_data" / "valid_minimal.md",
+        test_dir / "fail_data" / "missing_local_database.md"
     ]
     
+    # Act
     groups = group_files_by_config(files)
     
-    # Only the valid file should be grouped
-    assert len(groups) == 1, "Only valid file should be grouped"
+    # Assert
+    total_files = sum(len(files) for files in groups.values())
+    assert total_files == 2, \
+        f"Should only include 2 valid files, got {total_files}"
     
-    config_key = list(groups.keys())[0]
-    assert len(groups[config_key]) == 1, "Group should contain only valid file"
-    
-    print("  SUCCESS: Files without front matter skipped correctly")
-    print("  ✓ All group_files_by_config (no front matter) tests passed")
+    print(f"  ✓ Only valid files included in groups")
+    print(f"  ✓ Total grouped files: {total_files}")
+    print(f"  ✓ Invalid files skipped: 2")
 
 
-def test_skip_files_incomplete_config():
-    """Test handling files with incomplete test configurations."""
+def test_files_without_config_skipped():
+    """Test that files without test config are skipped."""
     print("\n" + "="*60)
-    print("TEST: group_files_by_config() - incomplete config")
+    print("TEST: Files without config are skipped")
     print("="*60)
     
-    test_data_dir = Path(__file__).parent / "test_data"
-    fail_data_dir = Path(__file__).parent / "fail_data"
-    
-    # Mix valid and incomplete config files
+    test_dir = Path(__file__).parent / "fail_data"
     files = [
-        test_data_dir / "api_doc_same_config_1.md",
-        fail_data_dir / "incomplete_test_config.md"
+        test_dir / "no_front_matter.md",
+        test_dir / "missing_local_database.md",
+        test_dir / "no_test_section.md"
     ]
     
+    # Act
     groups = group_files_by_config(files)
     
-    # Only the complete config should be grouped
-    assert len(groups) == 1, "Only complete config should be grouped"
+    # Assert
+    assert len(groups) == 0, \
+        f"Should have no groups for files without config, got {len(groups)}"
     
-    print("  SUCCESS: Files with incomplete config skipped correctly")
-    print("  ✓ All group_files_by_config (incomplete) tests passed")
-
-
-def test_skip_files_no_test_section():
-    """Test handling files without test section in front matter."""
-    print("\n" + "="*60)
-    print("TEST: group_files_by_config() - no test section")
-    print("="*60)
-    
-    test_data_dir = Path(__file__).parent / "test_data"
-    fail_data_dir = Path(__file__).parent / "fail_data"
-    
-    # Mix valid and no-test-config files
-    files = [
-        test_data_dir / "api_doc_same_config_1.md",
-        fail_data_dir / "no_test_config.md"
-    ]
-    
-    groups = group_files_by_config(files)
-    
-    # Only file with test config should be grouped
-    assert len(groups) == 1, "Only file with test config should be grouped"
-    
-    print("  SUCCESS: Files without test section skipped correctly")
-    print("  ✓ All group_files_by_config (no test) tests passed")
+    print(f"  ✓ All files without config properly skipped")
+    print(f"  ✓ Groups: {len(groups)}")
 
 
 def test_output_json_format():
     """Test JSON output format."""
     print("\n" + "="*60)
-    print("TEST: output_json()")
+    print("TEST: JSON output format")
     print("="*60)
     
-    test_data_dir = Path(__file__).parent / "test_data"
+    # Arrange
+    groups = {
+        ('json-server@0.17.4', 'localhost:3000', 'api/db.json'): ['file1.md', 'file2.md']
+    }
     
-    files = [
-        test_data_dir / "api_doc_same_config_1.md",
-        test_data_dir / "api_doc_same_config_2.md"
-    ]
+    # Act
+    result = output_json(groups)
     
-    groups = group_files_by_config(files)
+    # Assert
+    data = json.loads(result)  # Should parse without error
+    assert 'groups' in data, "JSON should have 'groups' key"
+    assert len(data['groups']) == 1, "Should have 1 group"
+    assert data['groups'][0]['test_apps'] == 'json-server@0.17.4'
+    assert data['groups'][0]['server_url'] == 'localhost:3000'
+    assert data['groups'][0]['local_database'] == 'api/db.json'
+    assert data['groups'][0]['files'] == ['file1.md', 'file2.md']
     
-    # Capture JSON output
-    captured_output = StringIO()
-    with redirect_stdout(captured_output):
-        output_json(groups)
+    print(f"  ✓ Valid JSON output")
+    print(f"  ✓ Contains all required fields")
+
+
+def test_output_json_empty_groups():
+    """Test JSON output with no groups."""
+    print("\n" + "="*60)
+    print("TEST: JSON output with empty groups")
+    print("="*60)
     
-    json_str = captured_output.getvalue()
+    # Arrange
+    groups = {}
     
-    # Parse and validate JSON
-    result = json.loads(json_str)
+    # Act
+    result = output_json(groups)
     
-    assert "groups" in result, "JSON should have 'groups' key"
-    assert len(result["groups"]) == 1, "Should have one group"
+    # Assert
+    data = json.loads(result)
+    assert 'groups' in data, "JSON should have 'groups' key"
+    assert len(data['groups']) == 0, "Should have empty groups array"
     
-    group = result["groups"][0]
-    assert "test_apps" in group
-    assert "server_url" in group
-    assert "local_database" in group
-    assert "files" in group
-    
-    assert isinstance(group["test_apps"], list), "test_apps should be a list"
-    assert group["test_apps"] == ["json-server@0.17.4"]
-    assert group["server_url"] == "localhost:3000"
-    assert group["local_database"] == "/api/test.json"
-    assert len(group["files"]) == 2, "Group should contain 2 files"
-    
-    print("  SUCCESS: JSON output format correct")
-    print("  ✓ All output_json tests passed")
+    print(f"  ✓ Valid JSON for empty groups")
 
 
 def test_output_shell_format():
-    """Test shell variables output format."""
+    """Test shell output format."""
     print("\n" + "="*60)
-    print("TEST: output_shell()")
+    print("TEST: Shell output format")
     print("="*60)
     
-    test_data_dir = Path(__file__).parent / "test_data"
+    # Arrange
+    groups = {
+        ('json-server@0.17.4', 'localhost:3000', 'api/db.json'): ['file1.md', 'file2.md']
+    }
     
-    files = [
-        test_data_dir / "api_doc_same_config_1.md",
-        test_data_dir / "api_doc_config_a.md"
-    ]
+    # Act
+    result = output_shell(groups)
     
-    groups = group_files_by_config(files)
+    # Assert
+    assert 'GROUP_1_TEST_APPS=' in result, "Should have GROUP_1_TEST_APPS variable"
+    assert 'GROUP_1_SERVER_URL=' in result, "Should have GROUP_1_SERVER_URL variable"
+    assert 'GROUP_1_LOCAL_DATABASE=' in result, "Should have GROUP_1_LOCAL_DATABASE variable"
+    assert 'GROUP_1_FILES=' in result, "Should have GROUP_1_FILES variable"
+    assert 'GROUP_COUNT=1' in result, "Should have GROUP_COUNT variable"
+    assert 'json-server@0.17.4' in result, "Should contain test_apps value"
+    assert 'file1.md file2.md' in result, "Should contain files separated by space"
     
-    # Capture shell output
-    captured_output = StringIO()
-    with redirect_stdout(captured_output):
-        output_shell(groups)
-    
-    shell_output = captured_output.getvalue()
-    lines = shell_output.strip().split('\n')
-    
-    # Should have variables for each group plus GROUP_COUNT
-    # 2 groups × 4 variables each = 8, plus 1 GROUP_COUNT = 9 lines
-    assert len(lines) >= 9, f"Expected at least 9 lines, got {len(lines)}"
-    
-    # Check GROUP_COUNT
-    assert "GROUP_COUNT=2" in shell_output, "Should have GROUP_COUNT=2"
-    
-    # Check group 1 variables exist
-    assert any("GROUP_1_TEST_APPS=" in line for line in lines)
-    assert any("GROUP_1_SERVER_URL=" in line for line in lines)
-    assert any("GROUP_1_LOCAL_DATABASE=" in line for line in lines)
-    assert any("GROUP_1_FILES=" in line for line in lines)
-    
-    # Check group 2 variables exist
-    assert any("GROUP_2_TEST_APPS=" in line for line in lines)
-    assert any("GROUP_2_SERVER_URL=" in line for line in lines)
-    assert any("GROUP_2_LOCAL_DATABASE=" in line for line in lines)
-    assert any("GROUP_2_FILES=" in line for line in lines)
-    
-    print("  SUCCESS: Shell output format correct")
-    print("  ✓ All output_shell tests passed")
+    print(f"  ✓ Valid shell output format")
+    print(f"  ✓ All required variables present")
 
 
-def test_empty_file_list():
-    """Test handling empty file list."""
+def test_output_shell_multiple_groups():
+    """Test shell output with multiple groups."""
     print("\n" + "="*60)
-    print("TEST: group_files_by_config() - empty list")
+    print("TEST: Shell output with multiple groups")
     print("="*60)
     
-    groups = group_files_by_config([])
+    # Arrange
+    groups = {
+        ('app1', 'url1', 'db1'): ['file1.md'],
+        ('app2', 'url2', 'db2'): ['file2.md']
+    }
     
-    assert len(groups) == 0, "Empty file list should produce no groups"
+    # Act
+    result = output_shell(groups)
     
-    print("  SUCCESS: Empty file list handled correctly")
-    print("  ✓ All empty list tests passed")
+    # Assert
+    assert 'GROUP_1_' in result, "Should have GROUP_1_ variables"
+    assert 'GROUP_2_' in result, "Should have GROUP_2_ variables"
+    assert 'GROUP_COUNT=2' in result, "Should have correct count"
+    
+    print(f"  ✓ Multiple groups formatted correctly")
+
+
+def test_output_shell_empty_groups():
+    """Test shell output with no groups."""
+    print("\n" + "="*60)
+    print("TEST: Shell output with empty groups")
+    print("="*60)
+    
+    # Arrange
+    groups = {}
+    
+    # Act
+    result = output_shell(groups)
+    
+    # Assert
+    assert 'GROUP_COUNT=0' in result, "Should have GROUP_COUNT=0"
+    
+    print(f"  ✓ Empty groups handled correctly")
+
+
+def test_cli_json_output():
+    """Test CLI with JSON output."""
+    print("\n" + "="*60)
+    print("TEST: CLI with --output json")
+    print("="*60)
+    
+    test_dir = Path(__file__).parent / "test_data"
+    test_file = test_dir / "valid_complete.md"
+    script = Path(__file__).parent.parent / "get-test-configs.py"
+    
+    # Act
+    result = subprocess.run(
+        [sys.executable, str(script), '--output', 'json', str(test_file)],
+        capture_output=True,
+        text=True
+    )
+    
+    # Assert
+    assert result.returncode == 0, \
+        f"Should exit 0, got {result.returncode}"
+    
+    data = json.loads(result.stdout)  # Should parse
+    assert 'groups' in data, "Should have groups in output"
+    
+    print(f"  ✓ CLI produces valid JSON")
+    print(f"  ✓ Exit code: 0")
+
+
+def test_cli_shell_output():
+    """Test CLI with shell output."""
+    print("\n" + "="*60)
+    print("TEST: CLI with --output shell")
+    print("="*60)
+    
+    test_dir = Path(__file__).parent / "test_data"
+    test_file = test_dir / "valid_complete.md"
+    script = Path(__file__).parent.parent / "get-test-configs.py"
+    
+    # Act
+    result = subprocess.run(
+        [sys.executable, str(script), '--output', 'shell', str(test_file)],
+        capture_output=True,
+        text=True
+    )
+    
+    # Assert
+    assert result.returncode == 0, \
+        f"Should exit 0, got {result.returncode}"
+    assert 'GROUP_' in result.stdout, "Should have GROUP_ variables"
+    assert 'GROUP_COUNT=' in result.stdout, "Should have GROUP_COUNT"
+    
+    print(f"  ✓ CLI produces valid shell output")
+    print(f"  ✓ Exit code: 0")
+
+
+def test_cli_missing_output_flag():
+    """Test CLI without --output flag shows error."""
+    print("\n" + "="*60)
+    print("TEST: CLI without --output flag")
+    print("="*60)
+    
+    test_dir = Path(__file__).parent / "test_data"
+    test_file = test_dir / "valid_complete.md"
+    script = Path(__file__).parent.parent / "get-test-configs.py"
+    
+    # Act
+    result = subprocess.run(
+        [sys.executable, str(script), str(test_file)],
+        capture_output=True,
+        text=True
+    )
+    
+    # Assert
+    assert result.returncode != 0, "Should exit with error"
+    assert 'required' in result.stderr.lower() or 'error' in result.stderr.lower(), \
+        "Should show error about missing flag"
+    
+    print(f"  ✓ Missing --output flag causes error")
+
+
+def test_cli_invalid_output_format():
+    """Test CLI with invalid --output value."""
+    print("\n" + "="*60)
+    print("TEST: CLI with invalid --output value")
+    print("="*60)
+    
+    test_dir = Path(__file__).parent / "test_data"
+    test_file = test_dir / "valid_complete.md"
+    script = Path(__file__).parent.parent / "get-test-configs.py"
+    
+    # Act
+    result = subprocess.run(
+        [sys.executable, str(script), '--output', 'xml', str(test_file)],
+        capture_output=True,
+        text=True
+    )
+    
+    # Assert
+    assert result.returncode != 0, "Should exit with error"
+    assert 'invalid choice' in result.stderr.lower() or 'error' in result.stderr.lower(), \
+        "Should show error about invalid choice"
+    
+    print(f"  ✓ Invalid --output value causes error")
+
+
+def test_cli_no_files():
+    """Test CLI without file arguments."""
+    print("\n" + "="*60)
+    print("TEST: CLI without file arguments")
+    print("="*60)
+    
+    script = Path(__file__).parent.parent / "get-test-configs.py"
+    
+    # Act
+    result = subprocess.run(
+        [sys.executable, str(script), '--output', 'json'],
+        capture_output=True,
+        text=True
+    )
+    
+    # Assert
+    assert result.returncode != 0, "Should exit with error when no files provided"
+    
+    print(f"  ✓ No files causes error")
+
+
+def test_cli_help():
+    """Test CLI --help flag."""
+    print("\n" + "="*60)
+    print("TEST: CLI --help flag")
+    print("="*60)
+    
+    script = Path(__file__).parent.parent / "get-test-configs.py"
+    
+    # Act
+    result = subprocess.run(
+        [sys.executable, str(script), '--help'],
+        capture_output=True,
+        text=True
+    )
+    
+    # Assert
+    assert result.returncode == 0, "Should exit 0 for --help"
+    assert 'usage:' in result.stdout.lower() or 'Usage:' in result.stdout, \
+        "Should show usage information"
+    assert '--output' in result.stdout, "Should document --output flag"
+    
+    print(f"  ✓ Help flag works correctly")
+
+
+def test_shared_utilities_integration():
+    """Test that script uses shared utilities correctly."""
+    print("\n" + "="*60)
+    print("TEST: Shared utilities integration")
+    print("="*60)
+    
+    # Verify the module uses shared utilities
+    # Check that functions exist in the module
+    assert hasattr(get_configs_module, 'read_markdown_file'), \
+        "Module should import read_markdown_file"
+    assert hasattr(get_configs_module, 'parse_front_matter'), \
+        "Module should import parse_front_matter"
+    assert hasattr(get_configs_module, 'get_server_database_key'), \
+        "Module should import get_server_database_key"
+    
+    print(f"  ✓ Uses read_markdown_file from doc_test_utils")
+    print(f"  ✓ Uses parse_front_matter from doc_test_utils")
+    print(f"  ✓ Uses get_server_database_key from doc_test_utils")
 
 
 def run_all_tests():
@@ -318,15 +465,23 @@ def run_all_tests():
     print("="*70)
     
     tests = [
-        test_group_files_identical_config,
-        test_group_files_different_configs,
-        test_group_files_mixed_configs,
-        test_skip_files_no_front_matter,
-        test_skip_files_incomplete_config,
-        test_skip_files_no_test_section,
+        test_group_single_file,
+        test_group_same_config,
+        test_group_different_configs,
+        test_group_mixed_valid_invalid,
+        test_files_without_config_skipped,
         test_output_json_format,
+        test_output_json_empty_groups,
         test_output_shell_format,
-        test_empty_file_list
+        test_output_shell_multiple_groups,
+        test_output_shell_empty_groups,
+        test_cli_json_output,
+        test_cli_shell_output,
+        test_cli_missing_output_flag,
+        test_cli_invalid_output_format,
+        test_cli_no_files,
+        test_cli_help,
+        test_shared_utilities_integration,
     ]
     
     passed = 0
@@ -342,7 +497,8 @@ def run_all_tests():
             print(f"    {str(e)}")
         except Exception as e:
             failed += 1
-            print(f"\n  ✗ ERROR in {test_func.__name__}: {str(e)}")
+            print(f"\n  ✗ ERROR: {test_func.__name__}")
+            print(f"    {str(e)}")
     
     print("\n" + "="*70)
     print(f" TEST SUMMARY: {passed} passed, {failed} failed")

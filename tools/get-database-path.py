@@ -1,60 +1,50 @@
 #!/usr/bin/env python3
 """
-Extract test database path from markdown file's front matter.
+Extract database path from markdown file's front matter.
 
-This script reads a markdown file, extracts the YAML front matter,
-and outputs the test database path for use in API testing workflows.
+This script reads a markdown file's front matter and extracts the local_database
+path for API testing. If no valid test configuration is found, the script exits
+with non-zero status.
 
 Usage:
-    get-database-path.py <markdown-file>
+    get-database-path.py <filename>
 
-Output:
-    Prints the database path (with leading slash removed) to stdout.
-    If no database path is found, prints the default path.
-
-Example:
+Examples:
+    # Get database path
+    python3 get-database-path.py docs/api.md
+    
+    # Use in workflow
     DB_PATH=$(python3 tools/get-database-path.py docs/api.md)
-    echo "Using database: $DB_PATH"
+    
+Exit Codes:
+    0: Valid test configuration found, database path printed to stdout
+    1: No valid test configuration or error occurred
 """
 
 import sys
-import argparse
 from pathlib import Path
 from typing import Optional
 
 # Import shared utilities
-from doc_test_utils import read_markdown_file, parse_front_matter, log
+from doc_test_utils import read_markdown_file, parse_front_matter, get_test_config
 
 
-# Default database path if not specified in front matter
-DEFAULT_DATABASE_PATH = "api/to-do-db-source.json"
-
-
-def get_database_path_from_metadata(filepath: Path) -> Optional[str]:
+def get_database_path(filepath: Path) -> Optional[str]:
     """
-    Extract test database path from a markdown file's front matter.
-    
-    Reads the file, parses front matter, extracts the test.local_database
-    value, and strips leading slashes.
+    Extract database path from file's front matter.
     
     Args:
-        filepath: Path to the markdown file to process
+        filepath: Path to markdown file
         
     Returns:
-        Database path with leading slash removed, or None if file cannot
-        be read or front matter is invalid
+        Database path string, or None if not found
         
     Example:
-        >>> # File with front matter:
-        >>> # ---
-        >>> # test:
-        >>> #   local_database: /api/test-db.json
-        >>> # ---
-        >>> path = get_database_path_from_metadata(Path('test.md'))
+        >>> path = get_database_path(Path('docs/api.md'))
         >>> path
-        'api/test-db.json'
+        'api/to-do-db-source.json'
     """
-    # Read markdown file
+    # Read file
     content = read_markdown_file(filepath)
     if content is None:
         return None
@@ -64,71 +54,41 @@ def get_database_path_from_metadata(filepath: Path) -> Optional[str]:
     if metadata is None:
         return None
     
-    # Extract test configuration
-    test_config = metadata.get('test', {})
-    if not isinstance(test_config, dict):
+    # Get test config
+    test_config = get_test_config(metadata)
+    if not test_config:
         return None
     
-    # Get database path
+    # Extract database path (required field)
     db_path = test_config.get('local_database')
-    if db_path is None:
+    if not db_path:
         return None
     
-    # Strip leading slash and return
-    if isinstance(db_path, str):
-        return db_path.lstrip('/')
+    # Strip leading slash if present
+    if db_path.startswith('/'):
+        db_path = db_path[1:]
     
-    return None
+    return db_path
 
 
 def main():
-    """Main execution function."""
-    parser = argparse.ArgumentParser(
-        description='Extract test database path from markdown front matter.',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  %(prog)s docs/api-reference.md
-  
-  # In a shell script:
-  DB_PATH=$(%(prog)s docs/api-reference.md)
-  echo "Database: $DB_PATH"
-  
-  # With default fallback:
-  DB_PATH=$(%(prog)s docs/api.md || echo "api/default.json")
-
-Output:
-  Prints database path to stdout (with leading slash removed).
-  Prints to stderr if file cannot be read or has no database path.
-  
-Exit Codes:
-  0 - Success (database path found and printed)
-  1 - Error (file not found, invalid front matter, or no database path)
-        """
-    )
+    """Main entry point."""
+    if len(sys.argv) != 2:
+        print("Error: Exactly one filename required", file=sys.stderr)
+        print("Usage: get-database-path.py <filename>", file=sys.stderr)
+        sys.exit(1)
     
-    parser.add_argument(
-        'filepath',
-        type=str,
-        help='Path to the markdown file to process'
-    )
+    filepath = Path(sys.argv[1])
     
-    args = parser.parse_args()
+    db_path = get_database_path(filepath)
     
-    filepath = Path(args.filepath)
+    if db_path is None:
+        # No output, just exit with error code
+        sys.exit(1)
     
-    # Extract database path
-    db_path = get_database_path_from_metadata(filepath)
-    
-    if db_path:
-        # Success - print to stdout
-        print(db_path)
-        sys.exit(0)
-    else:
-        # No database path found - print default to stdout
-        # (This allows workflow to continue with default)
-        print(DEFAULT_DATABASE_PATH)
-        sys.exit(0)
+    # Output database path to stdout
+    print(db_path)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

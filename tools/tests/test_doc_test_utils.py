@@ -30,7 +30,7 @@ def test_parse_front_matter():
     print("TEST: parse_front_matter()")
     print("="*60)
     
-    # Test valid frontmatter
+    # Test valid front matter
     content = """---
 layout: default
 description: Test page

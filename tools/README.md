@@ -61,7 +61,7 @@ Tests the linter exception scanner:
 
 The `test_data/` directory contains sample files used by tests:
 
-- `sample.md` - Complete markdown file with frontmatter and API examples
+- `sample.md` - Complete markdown file with front matter and API examples
 - `linter_exceptions.md` - File with Vale and markdownlint exception tags
 - `clean.md` - Clean file with no linter exceptions
 

@@ -13,7 +13,7 @@ For files that should **fail** or return errors, see `../fail_data/`.
 
 Complete, well-formed markdown file with:
 
-- Valid YAML frontmatter
+- Valid YAML front matter
 - API documentation examples
 - Test configuration
 - Multiple sections
@@ -27,7 +27,7 @@ Complete, well-formed markdown file with:
 
 Clean markdown file with:
 
-- Valid frontmatter
+- Valid front matter
 - NO linter exceptions
 - Normal markdown content
 - Multiple sections and formatting
@@ -41,7 +41,7 @@ Clean markdown file with:
 
 Markdown file with:
 
-- Valid frontmatter
+- Valid front matter
 - 3 Vale exception tags (correctly formatted)
 - 3 markdownlint exception tags (correctly formatted)
 - Mixed content with both types
@@ -51,9 +51,9 @@ Markdown file with:
 
 ---
 
-### edge_cases_frontmatter.md
+### edge_cases_front_matter.md
 
-**Purpose:** Test frontmatter parsing edge cases
+**Purpose:** Test front matter parsing edge cases
 
 Contains valid YAML with:
 
@@ -173,7 +173,7 @@ test_file = test_data_dir / "sample.md"
 content = read_markdown_file(test_file)
 assert content is not None
 
-metadata = parse_frontmatter(content)
+metadata = parse_front_matter(content)
 assert metadata is not None  # Should succeed for all test_data files
 ```
 
@@ -192,7 +192,7 @@ When adding new test files to this directory:
 
 ## Test File Naming Convention
 
-- `*_frontmatter.md` - Tests frontmatter parsing features
+- `*_front_matter.md` - Tests front matter parsing features
 - `*_exceptions.md` - Tests linter exception detection
 - `clean.md` - No errors/exceptions (baseline)
 - `edge_cases_*.md` - Edge case testing (but still valid)

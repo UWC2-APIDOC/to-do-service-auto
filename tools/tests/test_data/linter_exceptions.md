@@ -40,5 +40,5 @@ This has a sppeling error that would normally be caught.
 <!-- vale Spelling.Error = YES -->
 
 <!-- markdownlint-disable MD041 -->
-This file doesn't start with a level 1 heading (it starts with frontmatter).
+This file doesn't start with a level 1 heading (it starts with front matter).
 <!-- markdownlint-enable MD041 -->

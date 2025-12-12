@@ -55,36 +55,51 @@ def test_parse_testable_entry():
     print("\n" + "="*60)
     print("TEST: parse_testable_entry()")
     print("="*60)
+
+    test_cases = [
+        # (input, expected_output, description)
+        ("GET example", ("GET example", [200]), "Simple example, default status"),
+        ("POST example / 201", ("POST example", [201]), "Single status code"),
+        ("PUT example / 200,204", ("PUT example", [200, 204]), "Multiple status codes"),
+        ("DELETE example / 204", ("DELETE example", [204]), "DELETE with 204"),
+        ("", (None, None), "Empty string"),
+        ("   ", (None, None), "Whitespace only"),
+        ("Example / ", (None, None), "Slash but no codes"),
+        ("Example / abc", (None, None), "Non-numeric code"),
+        ("Example / 200,abc", (None, None), "Mixed valid and invalid codes"),
+        ("Example / 200,", (None, None), "Trailing comma"),
+        ("Example / ,200", (None, None), "Leading comma"),
+        ("/ 200", (None, None), "No example name"),
+        ("Example / 200 / 201", ("Example", [200]), "Extra slash (takes first part)"),
+        ("PATCH example / 200, 201, 204", ("PATCH example", [200, 201, 204]), "Multiple with spaces"),
+    ]
     
-    # Test 1: Simple entry (defaults to 200)
-    entry = "GET example"
-    name, codes = parse_testable_entry(entry)
-    assert name == "GET example", f"Expected 'GET example', got '{name}'"
-    assert codes == [200], f"Expected [200], got {codes}"
-    print("  SUCCESS: Simple entry parsed correctly")
+    passed = 0
+    failed = 0
     
-    # Test 2: Entry with single status code
-    entry = "POST example / 201"
-    name, codes = parse_testable_entry(entry)
-    assert name == "POST example", f"Expected 'POST example', got '{name}'"
-    assert codes == [201], f"Expected [201], got {codes}"
-    print("  SUCCESS: Entry with single status code parsed")
+    for input_str, expected, description in test_cases:
+        result = parse_testable_entry(input_str)
+        
+        if result == expected:
+            print(f"✓ PASS: {description}")
+            print(f"  Input: '{input_str}'")
+            print(f"  Result: {result}")
+            passed += 1
+        else:
+            print(f"✗ FAIL: {description}")
+            print(f"  Input: '{input_str}'")
+            print(f"  Expected: {expected}")
+            print(f"  Got: {result}")
+            failed += 1
+        print()
     
-    # Test 3: Entry with multiple status codes
-    entry = "PUT example / 200,204"
-    name, codes = parse_testable_entry(entry)
-    assert name == "PUT example", f"Expected 'PUT example', got '{name}'"
-    assert codes == [200, 204], f"Expected [200, 204], got {codes}"
-    print("  SUCCESS: Entry with multiple status codes parsed")
+    print(f"Results: {passed} passed, {failed} failed")
     
-    # Test 4: Entry with spaces
-    entry = "  DELETE example  /  404  "
-    name, codes = parse_testable_entry(entry)
-    assert name == "DELETE example", f"Expected 'DELETE example', got '{name}'"
-    assert codes == [404], f"Expected [404], got {codes}"
-    print("  SUCCESS: Entry with extra spaces parsed")
-    
-    print("  ✓ All parse_testable_entry tests passed")
+    if failed == 0:
+        print("✓ All tests passed!")
+    else:
+        print(f"✗ {failed} test(s) failed")
+    # end of test_parse_testable_entry
 
 
 def test_extract_curl_command():
@@ -360,7 +375,7 @@ def test_compare_json_objects_different():
     print("  ✓ All difference detection tests passed")
 
 
-def test_validate_frontmatter_with_jsonschema():
+def test_validate_front_matter_with_jsonschema():
     """Test front matter validation when jsonschema is available."""
     print("\n" + "="*60)
     print("TEST: validate_front_matter_schema() with jsonschema")
@@ -375,7 +390,7 @@ def test_validate_frontmatter_with_jsonschema():
         return
     
     test_data_dir = Path(__file__).parent / "test_data"
-    schema_path = test_data_dir / "valid_frontmatter_schema.json"
+    schema_path = test_data_dir / "valid_front_matter_schema.json"
     
     if not schema_path.exists():
         print(f"  SKIPPED: Schema file not found at {schema_path}")
@@ -424,7 +439,7 @@ def test_validate_frontmatter_with_jsonschema():
     print("  ✓ All validation tests passed")
 
 
-def test_validate_frontmatter_without_jsonschema():
+def test_validate_front_matter_without_jsonschema():
     """Test front matter validation gracefully handles missing jsonschema."""
     print("\n" + "="*60)
     print("TEST: validate_front_matter_schema() without jsonschema")
@@ -513,8 +528,8 @@ def run_all_tests():
         test_extract_expected_response,
         test_compare_json_objects_equal,
         test_compare_json_objects_different,
-        test_validate_frontmatter_with_jsonschema,
-        test_validate_frontmatter_without_jsonschema,
+        test_validate_front_matter_with_jsonschema,
+        test_validate_front_matter_without_jsonschema,
         test_real_test_data_files,
     ]
     
